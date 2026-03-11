@@ -590,47 +590,47 @@ let actionItems=[];
 let goalItems=[];
 
 const SHEET_ID='1H-d5s_b9t58OvZoOY4KLZ-pEPHyhUlYA';
-const SHEET_CSV_BASE='https://docs.google.com/spreadsheets/d/'+SHEET_ID+'/gviz/tq?tqx=out:csv';
-
-function parseCSV(text){
-  const rows=[];let cur=[];let field='';let inQ=false;
-  for(let i=0;i<text.length;i++){
-    const c=text[i];
-    if(inQ){
-      if(c==='"'&&text[i+1]==='"'){field+='"';i++}
-      else if(c==='"'){inQ=false}
-      else{field+=c}
-    } else {
-      if(c==='"'){inQ=true}
-      else if(c===','){cur.push(field);field=''}
-      else if(c==='\n'||c==='\r'){
-        if(c==='\r'&&text[i+1]==='\n')i++;
-        cur.push(field);field='';if(cur.length>1||cur[0]!=='')rows.push(cur);cur=[];
-      } else {field+=c}
-    }
-  }
-  cur.push(field);if(cur.length>1||cur[0]!=='')rows.push(cur);
-  return rows;
-}
-
-function csvToObjects(text){
-  const rows=parseCSV(text);
-  if(rows.length<2)return [];
-  const headers=rows[0];
-  return rows.slice(1).map(r=>{
-    const obj={};headers.forEach((h,i)=>obj[h]=r[i]||'');return obj;
-  });
+// JSONP loader — works from file://, localhost, or any host (no CORS issues)
+let _gvizCbId=0;
+function loadGvizSheet(sheetRef,onSuccess,onError){
+  const cbName='_gvizCb'+(++_gvizCbId);
+  const param=typeof sheetRef==='number'?'gid='+sheetRef:'sheet='+encodeURIComponent(sheetRef);
+  const url='https://docs.google.com/spreadsheets/d/'+SHEET_ID+'/gviz/tq?'+param+'&tqx=responseHandler:'+cbName;
+  const script=document.createElement('script');
+  const timeout=setTimeout(function(){delete window[cbName];script.remove();onError()},10000);
+  window[cbName]=function(resp){
+    delete window[cbName];script.remove();clearTimeout(timeout);
+    if(resp.status!=='ok'){onError();return}
+    const cols=resp.table.cols.map(c=>c.label);
+    const rows=resp.table.rows.map(r=>{
+      const obj={};
+      cols.forEach((col,i)=>{const cell=r.c&&r.c[i];obj[col]=cell?(cell.f||String(cell.v||'')):'';});
+      return obj;
+    });
+    onSuccess(rows);
+  };
+  script.src=url;
+  script.onerror=function(){delete window[cbName];script.remove();clearTimeout(timeout);onError()};
+  document.head.appendChild(script);
 }
 
 function loadExcelFromServer(){
   const container=document.getElementById('actions-table-container');
   container.innerHTML='<div class="actions-loading">Loading from Google Sheet...</div>';
-  Promise.all([
-    fetch(SHEET_CSV_BASE+'&gid=0').then(r=>{if(!r.ok)throw new Error();return r.text()}),
-    fetch(SHEET_CSV_BASE+'&sheet=Goals').then(r=>r.ok?r.text():null).catch(()=>null)
-  ]).then(([actionsCSV,goalsCSV])=>{
-    const raw=csvToObjects(actionsCSV);
-    actionItems=raw.map((r,i)=>({
+  let pending=2,actionsOk=false;
+  function done(){
+    if(--pending>0)return;
+    if(!actionsOk){
+      container.innerHTML='<div class="actions-empty">Could not load from Google Sheet.<br>Check that the sheet is shared (anyone with link can view).</div>';
+      return;
+    }
+    window._actionsLoaded=true;
+    document.getElementById('last-loaded-time').textContent='Synced: '+new Date().toLocaleTimeString();
+    populateFilters();renderActions();
+  }
+  loadGvizSheet(0,function(rows){
+    actionsOk=true;
+    actionItems=rows.map((r,i)=>({
       id:r.ID||r.id||(i+1),
       assignee:String(r.Assignee||r.assignee||''),
       task:String(r.Task||r.task||r['Action Item']||''),
@@ -641,24 +641,18 @@ function loadExcelFromServer(){
       os:String(r['Related OS']||r.related_os||r.RelatedOS||''),
       notes:String(r.Notes||r.notes||'')
     }));
-    goalItems=[];
-    if(goalsCSV){
-      const graw=csvToObjects(goalsCSV);
-      goalItems=graw.map(r=>({
-        goal:String(r.Goal||r.goal||''),
-        owner:String(r.Owner||r.owner||''),
-        target:formatDate(r['Target Date']||r.target_date||''),
-        status:String(r.Status||r.status||''),
-        details:String(r.Details||r.details||'')
-      }));
-    }
-    window._actionsLoaded=true;
-    document.getElementById('last-loaded-time').textContent='Synced: '+new Date().toLocaleTimeString();
-    populateFilters();
-    renderActions();
-  }).catch(()=>{
-    container.innerHTML='<div class="actions-empty">Could not load from Google Sheet.<br>Check that the sheet is shared (anyone with link can view).</div>';
-  });
+    done();
+  },function(){done()});
+  loadGvizSheet('Goals',function(rows){
+    goalItems=rows.map(r=>({
+      goal:String(r.Goal||r.goal||''),
+      owner:String(r.Owner||r.owner||''),
+      target:formatDate(r['Target Date']||r.target_date||''),
+      status:String(r.Status||r.status||''),
+      details:String(r.Details||r.details||'')
+    }));
+    done();
+  },function(){goalItems=[];done()});
 }
 
 
