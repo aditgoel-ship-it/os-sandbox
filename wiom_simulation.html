@@ -1,0 +1,3117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wiom System Simulation v0.1</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#f8f9fa;color:#1a1a2e;overflow:hidden;height:100vh}
+#app{display:flex;flex-direction:column;height:100vh}
+
+/* NAV */
+nav{display:flex;gap:2px;padding:8px 12px;background:#fff;border-bottom:2px solid #d92b90;align-items:center;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+nav .brand{font-weight:700;font-size:15px;color:#d92b90;margin-right:16px;white-space:nowrap}
+nav button{padding:6px 14px;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;background:#f1f5f9;color:#6b7280;transition:all .15s}
+nav button:hover{background:#e2e8f0;color:#1a1a2e}
+nav button.active{background:#d92b90;color:#fff}
+
+/* CONTROLS */
+#controls{display:flex;align-items:center;gap:12px;padding:8px 12px;background:#fff;border-bottom:1px solid #e2e8f0;font-size:13px}
+#controls .day{font-weight:700;font-size:15px;color:#d92b90;min-width:100px}
+#controls button{padding:4px 12px;border:1px solid #d1d5db;border-radius:4px;background:#fff;color:#1a1a2e;cursor:pointer;font-size:12px}
+#controls button:hover{background:#f1f5f9}
+#controls button.active-speed{background:#d92b90;color:#fff;border-color:#d92b90}
+#controls .sep{width:1px;height:20px;background:#d1d5db}
+#controls .eval-info{color:#6b7280;font-size:11px}
+
+/* VIEWS */
+#views{flex:1;overflow:hidden;position:relative}
+.view{display:none;height:100%;overflow:auto}
+.view.active{display:flex}
+
+/* SYSTEM VIEW */
+#system-view.active{display:flex;gap:0}
+#sv-left{flex:1;display:flex;flex-direction:column;overflow:hidden;border-right:1px solid #e2e8f0}
+#sv-right{width:340px;display:flex;flex-direction:column;min-width:280px;background:#fff;transition:width .3s}
+#sv-right.collapsed{width:40px;min-width:40px;overflow:hidden}
+#sv-right.collapsed #event-log-header .filters,#sv-right.collapsed #event-log{display:none}
+#sv-right.collapsed #event-log-header{writing-mode:vertical-rl;text-orientation:mixed;cursor:pointer;padding:12px 8px}
+#ev-collapse-btn{padding:2px 6px;border:1px solid #d1d5db;border-radius:3px;background:transparent;color:#6b7280;cursor:pointer;font-size:10px;margin-left:4px}
+#ev-collapse-btn:hover{background:#f1f5f9}
+
+/* Zone Map */
+#zone-map{flex:1;overflow-y:auto;padding:10px;background:#f8f9fa}
+.zone-card{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:10px;margin-bottom:8px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.zone-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-size:12px}
+.zone-name{font-weight:700;color:#1a1a2e}.zone-class{color:#6b7280;font-size:10px;padding:2px 6px;background:#f1f5f9;border-radius:3px}
+.zone-stats{display:flex;gap:8px;font-size:10px;color:#6b7280;margin-bottom:6px}
+.zone-dots{display:flex;flex-wrap:wrap;gap:4px}
+.csp-dot{width:24px;height:24px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#fff;transition:all .2s;position:relative;border:2px solid transparent}
+.csp-dot:hover{transform:scale(1.3);z-index:10}
+.csp-dot.q-compliant{background:#059669}
+.csp-dot.q-at-risk{background:#d97706}
+.csp-dot.q-non-compliant{background:#dc2626}
+.csp-dot.q-recovery{background:#7c3aed}
+.csp-dot.q-pending{background:#475569}
+.csp-dot.e-restricted{border-color:#f59e0b !important;border-width:3px}
+.csp-dot.e-suspended{border-color:#ef4444 !important;border-width:3px}
+.csp-dot.e-pre-exit{border-color:#f97316 !important;border-width:3px;animation:pulse 1s infinite}
+.csp-dot.e-terminated{background:#1f2937;border-color:#6b7280 !important;border-width:3px}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+
+/* Tooltip */
+.tooltip{display:none;position:fixed;background:#1a1a2e;color:#fff;border:1px solid #334155;border-radius:6px;padding:8px 10px;font-size:11px;z-index:1000;pointer-events:none;max-width:280px;line-height:1.4}
+.tooltip.show{display:block}
+
+/* System Counters */
+#sys-counters{padding:10px;background:#fff;border-top:1px solid #e2e8f0;display:flex;flex-wrap:wrap;gap:6px}
+.counter-box{background:#f8f9fa;border:1px solid #e2e8f0;border-radius:6px;padding:6px 10px;flex:1;min-width:100px;text-align:center}
+.counter-box .val{font-size:18px;font-weight:700}
+.counter-box .lbl{font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:.5px}
+.counter-box.green .val{color:#059669}
+.counter-box.yellow .val{color:#d97706}
+.counter-box.red .val{color:#dc2626}
+.counter-box.purple .val{color:#7c3aed}
+.counter-box.blue .val{color:#d92b90}
+.counter-box.gray .val{color:#6b7280}
+
+/* Event Log */
+#event-log{flex:1;overflow-y:auto;border-bottom:1px solid #e2e8f0;background:#fafbfc}
+#event-log-header{padding:8px 12px;background:#fff;border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:600;color:#1a1a2e}
+#event-log-header .filters{display:flex;gap:3px}
+#event-log-header .filters button{padding:2px 8px;border:1px solid #d1d5db;border-radius:3px;background:transparent;color:#6b7280;cursor:pointer;font-size:10px}
+#event-log-header .filters button.active{background:#f1f5f9;color:#1a1a2e;border-color:#9ca3af}
+#event-list{padding:4px 8px;font-size:11px;font-family:'Cascadia Code','Fira Code',monospace}
+.event-item{padding:4px 6px;border-bottom:1px solid #f1f5f9;cursor:pointer;border-radius:3px;color:#374151}
+.event-item:hover{background:#f1f5f9}
+.event-item .ev-time{color:#9ca3af;margin-right:6px}
+.event-item .ev-type{font-weight:600;margin-right:6px}
+.event-item .ev-type.quality{color:#2563eb}
+.event-item .ev-type.enforcement{color:#d97706}
+.event-item .ev-type.routing{color:#059669}
+.event-item .ev-type.compensation{color:#7c3aed}
+.event-item .ev-type.fpv{color:#dc2626}
+.event-item .ev-type.lifecycle{color:#6b7280}
+.event-item .ev-type.injection{color:#d92b90}
+.event-item .ev-type.concentration{color:#ea580c}
+.event-why{display:none;margin:4px 0 4px 20px;padding:6px 8px;background:#f1f5f9;border-left:2px solid #d92b90;font-size:10px;color:#4b5563;line-height:1.5}
+.event-why.show{display:block}
+
+/* Injection Panel */
+#injection-panel{display:none}
+#injection-bar{padding:8px 12px;background:#fff;border-top:1px solid #e2e8f0}
+#injection-bar .inj-header{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+#injection-bar .inj-header h3{font-size:11px;color:#d92b90;text-transform:uppercase;letter-spacing:.5px;margin:0}
+#injection-bar .inj-header span{font-size:10px;color:#9ca3af}
+.inj-buttons{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}
+.inj-btn{padding:4px 10px;border:1px solid #d1d5db;border-radius:4px;background:#fff;color:#374151;cursor:pointer;font-size:11px;transition:all .15s}
+.inj-btn:hover{background:#f1f5f9;border-color:#9ca3af}
+.inj-btn.danger{border-color:#fca5a5;color:#dc2626}
+.inj-btn.danger:hover{background:#fef2f2}
+#inj-log{font-size:10px;color:#6b7280;max-height:60px;overflow-y:auto}
+.inj-log-item{padding:2px 0;border-bottom:1px solid #f1f5f9}
+
+/* PARTNER VIEW */
+#partner-view{flex-direction:column;padding:16px;background:#f8f9fa}
+.pv-select{margin-bottom:12px;display:flex;gap:8px;align-items:center}
+.pv-select select{padding:6px 10px;background:#fff;color:#1a1a2e;border:1px solid #d1d5db;border-radius:4px;font-size:13px}
+.pv-dashboard{display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:900px}
+.pv-card{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:14px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.pv-card h3{font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.pv-metric{display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:13px}
+.pv-metric .label{color:#6b7280}
+.pv-metric .value{font-weight:600;color:#1a1a2e}
+.pv-metric .value.good{color:#059669}
+.pv-metric .value.warn{color:#d97706}
+.pv-metric .value.bad{color:#dc2626}
+.pv-status{display:inline-block;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600}
+.pv-status.compliant{background:#ecfdf5;color:#059669}
+.pv-status.at-risk{background:#fffbeb;color:#d97706}
+.pv-status.non-compliant{background:#fef2f2;color:#dc2626}
+.pv-status.recovery{background:#f5f3ff;color:#7c3aed}
+.pv-status.clear{background:#ecfdf5;color:#059669}
+.pv-status.restricted{background:#fffbeb;color:#d97706}
+.pv-status.suspended{background:#fef2f2;color:#dc2626}
+
+/* OPS VIEW */
+#ops-view{flex-direction:column;padding:16px;background:#f8f9fa}
+.ov-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:1000px}
+.ov-card{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:14px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.ov-card h3{font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.ov-bar{height:6px;background:#f1f5f9;border-radius:3px;overflow:hidden;margin:4px 0}
+.ov-bar-fill{height:100%;border-radius:3px;transition:width .3s}
+.ov-partner-row{display:flex;align-items:center;gap:6px;padding:3px 0;font-size:12px;border-bottom:1px solid #f1f5f9}
+
+/* PARAMS VIEW */
+#params-view{flex-direction:column;padding:16px;overflow-y:auto;background:#f8f9fa}
+.params-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;max-width:1200px}
+.param-group{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:14px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.param-group h3{font-size:12px;color:#d92b90;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
+.param-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #f1f5f9}
+.param-row .p-label{font-size:11px;color:#6b7280;flex:1}
+.param-row .p-id{font-size:10px;color:#9ca3af;margin-right:8px;font-family:monospace}
+.param-row input{width:70px;padding:3px 6px;background:#f8f9fa;border:1px solid #d1d5db;border-radius:3px;color:#1a1a2e;font-size:12px;text-align:right}
+.param-row input:focus{border-color:#d92b90;outline:none}
+.param-changed{background:#fdf2f8 !important;border-color:#d92b90 !important}
+#params-actions{margin-top:12px;display:flex;gap:8px}
+#params-actions button{padding:6px 16px;border:none;border-radius:4px;cursor:pointer;font-size:12px;font-weight:600}
+.btn-apply{background:#d92b90;color:#fff}
+.btn-reset{background:#f1f5f9;color:#374151;border:1px solid #d1d5db}
+
+/* IMPACT VIEW */
+#impact-view{flex-direction:column;padding:16px;background:#f8f9fa}
+.impact-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;max-width:1200px;margin-bottom:16px}
+.impact-card{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:14px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.impact-card h3{font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.impact-big{font-size:28px;font-weight:700;margin-bottom:2px}
+.impact-sub{font-size:11px;color:#6b7280}
+
+/* DOSSIER VIEW */
+#dossier-view{flex-direction:column;padding:16px;background:#f8f9fa}
+.dos-header{background:#1a1a2e;color:#fff;padding:10px 14px;border-radius:8px 8px 0 0;font-size:11px;text-transform:uppercase;letter-spacing:1px}
+.dos-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:900px}
+
+/* PARTNER DASHBOARD (Visibility OS) */
+.pd-notice{background:#fffbeb;border:1px solid #fbbf24;border-radius:6px;padding:8px 12px;font-size:11px;color:#92400e;margin-bottom:12px}
+
+/* Connection flow animation */
+.flow-item{padding:3px 8px;border-radius:4px;margin:2px 0;font-size:11px;animation:fadeIn .3s}
+.flow-item.assigned{background:#eff6ff;border-left:3px solid #2563eb}
+.flow-item.declined{background:#fef2f2;border-left:3px solid #dc2626}
+.flow-item.accepted{background:#ecfdf5;border-left:3px solid #059669}
+.flow-item.expired{background:#f9fafb;border-left:3px solid #9ca3af}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+
+/* Narrative Bar — Primary explanation layer */
+#narrative-bar{padding:12px 16px;background:linear-gradient(135deg,#fdf2f8,#fff);border-bottom:2px solid #f9a8d4;font-size:13px;color:#374151;min-height:70px;display:flex;flex-direction:column;gap:6px;border-left:4px solid #d92b90}
+#narrative-bar .nar-header{display:flex;align-items:center;gap:8px;font-size:11px;color:#6b7280}
+#narrative-bar .nar-header .nar-day{font-weight:700;color:#d92b90;font-size:13px}
+#narrative-bar .nar-header .nar-eval-tag{padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600}
+#narrative-bar .nar-eval-tag.eval-day{background:#dbeafe;color:#2563eb}
+#narrative-bar .nar-eval-tag.normal-day{background:#f1f5f9;color:#6b7280}
+#narrative-bar .nar-text{flex:1;line-height:1.6;font-size:13px}
+#narrative-bar .nar-history{border-top:1px solid #f3e8f0;margin-top:6px;padding-top:6px;max-height:60px;overflow-y:auto}
+#narrative-bar .nar-prev{font-size:11px;color:#9ca3af;line-height:1.5;margin-bottom:3px;opacity:.7}
+#narrative-bar .nar-os{display:inline-block;padding:1px 6px;border-radius:3px;font-size:10px;font-weight:600;margin-right:4px}
+.os-quality{background:#dbeafe;color:#2563eb}
+.os-enforcement{background:#fef3c7;color:#d97706}
+.os-routing{background:#d1fae5;color:#059669}
+.os-compensation{background:#ede9fe;color:#7c3aed}
+.os-fpv{background:#fee2e2;color:#dc2626}
+.os-lifecycle{background:#f1f5f9;color:#6b7280}
+.os-concentration{background:#ffedd5;color:#ea580c}
+.os-injection{background:#fdf2f8;color:#d92b90}
+
+/* OS Badge in Event Log */
+.ev-os-badge{display:inline-block;padding:1px 5px;border-radius:3px;font-size:9px;font-weight:600;margin-right:4px;vertical-align:middle}
+.ev-plain{font-family:'Segoe UI',system-ui,sans-serif;font-size:12px;color:#374151}
+#ev-mode-toggle{padding:2px 6px;border:1px solid #d1d5db;border-radius:3px;background:transparent;color:#6b7280;cursor:pointer;font-size:10px;margin-left:auto}
+#ev-mode-toggle:hover{background:#f1f5f9}
+
+/* Injection tooltip */
+.inj-btn{position:relative}
+.inj-tip{display:none;position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:#1a1a2e;color:#fff;padding:6px 10px;border-radius:4px;font-size:10px;white-space:nowrap;z-index:100;pointer-events:none;line-height:1.3;max-width:250px;white-space:normal;text-align:center}
+.inj-btn:hover .inj-tip{display:block}
+
+/* Timeline View */
+#timeline-view{flex-direction:column;padding:16px;background:#f8f9fa}
+#timeline-view h2{font-size:16px;margin-bottom:4px}
+#timeline-view .tl-subtitle{color:#6b7280;font-size:12px;margin-bottom:16px}
+.tl-day-group{margin-bottom:16px}
+.tl-day-header{font-size:13px;font-weight:700;color:#d92b90;padding:6px 0;border-bottom:1px solid #e2e8f0;margin-bottom:6px;position:sticky;top:0;background:#f8f9fa;z-index:5}
+.tl-entry{padding:6px 10px;margin:3px 0;background:#fff;border:1px solid #e2e8f0;border-radius:6px;font-size:12px;line-height:1.5;color:#374151;display:flex;gap:8px;align-items:flex-start}
+.tl-entry .tl-os{flex-shrink:0}
+.tl-entry .tl-text{flex:1}
+.tl-filters{display:flex;gap:4px;margin-bottom:12px;flex-wrap:wrap}
+.tl-filters button{padding:3px 10px;border:1px solid #d1d5db;border-radius:4px;background:#fff;color:#6b7280;cursor:pointer;font-size:11px}
+.tl-filters button.active{background:#d92b90;color:#fff;border-color:#d92b90}
+
+/* Reference View */
+#reference-view{flex-direction:column;padding:16px;background:#f8f9fa}
+#reference-view h2{font-size:16px;margin-bottom:12px}
+.ref-tabs{display:flex;gap:4px;margin-bottom:16px;flex-wrap:wrap}
+.ref-tabs button{padding:6px 14px;border:1px solid #d1d5db;border-radius:6px;background:#fff;color:#6b7280;cursor:pointer;font-size:12px;font-weight:600}
+.ref-tabs button.active{background:#d92b90;color:#fff;border-color:#d92b90}
+.ref-content{max-width:1000px}
+.ref-section{margin-bottom:20px}
+.ref-section h3{font-size:14px;color:#1a1a2e;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid #e2e8f0}
+.ref-table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:12px}
+.ref-table th{background:#f1f5f9;padding:6px 10px;text-align:left;font-weight:600;color:#6b7280;border:1px solid #e2e8f0}
+.ref-table td{padding:6px 10px;border:1px solid #e2e8f0;color:#374151}
+.ref-legend-dot{display:inline-block;width:14px;height:14px;border-radius:50%;margin-right:6px;vertical-align:middle}
+
+/* Walkthrough — Simplified Narrative */
+.wt-picker{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:16px}
+.wt-picker button{padding:6px 14px;border:1px solid #d1d5db;border-radius:6px;background:#fff;color:#6b7280;cursor:pointer;font-size:12px;font-weight:600;transition:all .15s}
+.wt-picker button:hover{background:#f1f5f9;color:#1a1a2e}
+.wt-picker button.active{background:#d92b90;color:#fff;border-color:#d92b90}
+.wt-card{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:20px 24px;margin-bottom:12px}
+.wt-card h4{font-size:15px;color:#1a1a2e;margin-bottom:4px}
+.wt-card .wt-subtitle{font-size:12px;color:#6b7280;margin-bottom:16px}
+.wt-scene-header{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.wt-scene-num{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:#d92b90;color:#fff;font-size:12px;font-weight:700;flex-shrink:0}
+.wt-scene-title{font-size:13px;font-weight:700;color:#1a1a2e}
+.wt-narrative{font-size:12.5px;color:#374151;line-height:1.85;margin-bottom:12px}
+.wt-narrative .os{display:inline-block;padding:1px 7px;border-radius:4px;font-size:10px;font-weight:700;margin:0 1px;vertical-align:baseline}
+.wt-narrative .os.q{background:#dbeafe;color:#2563eb}
+.wt-narrative .os.e{background:#fef3c7;color:#d97706}
+.wt-narrative .os.d{background:#d1fae5;color:#059669}
+.wt-narrative .os.c{background:#ede9fe;color:#7c3aed}
+.wt-narrative .os.f{background:#fee2e2;color:#dc2626}
+.wt-narrative .os.l{background:#f1f5f9;color:#6b7280}
+.wt-narrative .os.x{background:#ffedd5;color:#ea580c}
+.wt-narrative .os.v{background:#fdf2f8;color:#d92b90}
+.wt-note{font-size:11px;color:#6b7280;font-style:italic;margin-bottom:14px;padding:6px 10px;background:#f8f9fa;border-radius:5px;border-left:3px solid #d92b90}
+.wt-controls{display:flex;gap:8px;align-items:center;margin-top:6px}
+.wt-controls button{padding:6px 18px;border:1px solid #d1d5db;border-radius:5px;background:#fff;color:#374151;cursor:pointer;font-size:12px;font-weight:600}
+.wt-controls button:hover{background:#f1f5f9}
+.wt-controls button.primary{background:#d92b90;color:#fff;border-color:#d92b90}
+.wt-controls button.primary:hover{background:#c0247e}
+.wt-controls button:disabled{opacity:.4;cursor:default}
+.wt-step-info{font-size:11px;color:#6b7280;margin-left:auto}
+.wt-key-insight{margin-top:14px;padding:10px 14px;background:linear-gradient(135deg,#fdf2f8,#fff);border:1px solid #f9a8d4;border-radius:8px;font-size:12px;color:#831843;line-height:1.6}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:#f8f9fa}
+::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:#94a3b8}
+</style>
+</head>
+<body>
+<div id="app">
+<nav id="nav">
+  <span class="brand">WIOM SYSTEM SIMULATION</span>
+  <button class="active" onclick="switchView('reference')">Start Here</button>
+  <button onclick="switchView('system')">System View</button>
+  <button onclick="switchView('partner')">Partner Dashboard</button>
+  <button onclick="switchView('dossier')">Internal Dossier</button>
+  <button onclick="switchView('ops')">Ops View</button>
+  <button onclick="switchView('impact')">Impact View</button>
+  <button onclick="switchView('timeline')">Timeline</button>
+  <button onclick="switchView('params')">Parameters</button>
+</nav>
+<div id="controls">
+  <span class="day" id="day-display">Day 0 / 90</span>
+  <button onclick="simStepBack()" title="Go back 1 day" id="back-btn" style="opacity:.4">◀ Back</button>
+  <button onclick="simStep()" title="Advance 1 day">Step ▶</button>
+  <button id="play-btn" onclick="simToggle()">Play ▶</button>
+  <div class="sep"></div>
+  <button class="active-speed" data-speed="2500" onclick="setSpeed(2500,this)">1x</button>
+  <button data-speed="1500" onclick="setSpeed(1500,this)">2x</button>
+  <button data-speed="600" onclick="setSpeed(600,this)">5x</button>
+  <button data-speed="150" onclick="setSpeed(150,this)">20x</button>
+  <div class="sep"></div>
+  <span class="eval-info" id="eval-info">Next quality eval: Day 7</span>
+  <div class="sep"></div>
+  <span class="eval-info" id="sim-status">Ready</span>
+</div>
+<div id="views">
+  <div id="reference-view" class="view active"></div>
+  <div id="system-view" class="view">
+    <div id="sv-left">
+      <div id="narrative-bar"><span class="nar-icon">📋</span><span class="nar-text">Welcome to the Wiom System Simulation. Press <b>Step</b> to advance one day, or <b>Play</b> to run continuously. The simulation uses real Bharat partner data.</span></div>
+      <div id="zone-map"></div>
+      <div id="injection-bar"></div>
+      <div id="sys-counters"></div>
+    </div>
+    <div id="sv-right" class="collapsed">
+      <div id="event-log-header" onclick="if(document.getElementById('sv-right').classList.contains('collapsed'))toggleEvCollapse()">
+        <span>Event Log</span>
+        <button id="ev-collapse-btn" onclick="toggleEvCollapse();event.stopPropagation()">◀</button>
+        <button id="ev-mode-toggle" onclick="toggleEvMode();event.stopPropagation()">Plain English</button>
+        <div class="filters">
+          <button class="active" onclick="setEvFilter('all',this)">All</button>
+          <button onclick="setEvFilter('quality',this)">Quality</button>
+          <button onclick="setEvFilter('enforcement',this)">Enforce</button>
+          <button onclick="setEvFilter('routing',this)">Routing</button>
+          <button onclick="setEvFilter('fpv',this)">FPV</button>
+          <button onclick="setEvFilter('compensation',this)">Comp</button>
+        </div>
+      </div>
+      <div id="event-log"><div id="event-list"></div></div>
+      <div id="injection-panel" style="display:none"></div>
+    </div>
+  </div>
+  <div id="partner-view" class="view"></div>
+  <div id="dossier-view" class="view"></div>
+  <div id="ops-view" class="view"></div>
+  <div id="impact-view" class="view"></div>
+  <div id="timeline-view" class="view"></div>
+  <div id="params-view" class="view"></div>
+</div>
+</div>
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+// ============================================================
+// SECTION 1: SEEDED RNG
+// ============================================================
+function createRng(seed){let s=seed;return function(){s=(s*1103515245+12345)&0x7fffffff;return s/0x7fffffff}}
+const rng=createRng(42);
+function randRange(min,max){return min+(max-min)*rng()}
+function randInt(min,max){return Math.floor(randRange(min,max+1))}
+function pick(arr){return arr[randInt(0,arr.length-1)]}
+
+// ============================================================
+// SECTION 2: SYSTEM PARAMETER REGISTRY (SPR)
+// ============================================================
+const SPR_DEFAULTS={
+  // Quality OS
+  P01:7,         // evaluation window (days)
+  THRESH_SS:90,  // Service Stability threshold (% uptime)
+  THRESH_SR:8,   // Service Resolution threshold (hours)
+  THRESH_IQ:85,  // Installation Quality threshold (% first-install success)
+  P12:5,         // min connections for quality eval
+  P15:2,         // visibility-before-consequence delay (days)
+  P17_SS:4,      // chronic timer SS (windows)
+  P17_SR:4,      // chronic timer SR (windows)
+  P17_IQ:3,      // chronic timer IQ (windows)
+  P18:3,         // min installations for IQ eval
+  P10_RECOVERY:2,// consecutive windows improving to confirm RECOVERY→COMPLIANT
+
+  // Enforcement OS
+  E01:1,         // pattern watch entry (fixed structural)
+  E02:3,         // consecutive NC windows → RESTRICTED
+  E03:2,         // additional NC windows → PRE_EXIT
+  E04:7,         // FPV investigation window (days)
+  E05:true,      // FPV auto-suspend on E04 expiry
+
+  // D&A OS
+  P41:1,         // acceptance window (days, simplified from hours)
+  P42:3,         // consecutive compliant cycles for ELIGIBLE_FULL
+  P43:2,         // recovery window cycles for ELIGIBLE_REDUCED
+  P44:0.5,       // reduced exposure multiplier
+  P45:2,         // ramp cycles for BASELINE
+  P46:50,        // max active connections per CSP (default)
+  P50:3,         // max retry attempts
+  P51:1,         // assignment cooldown (days)
+  P53:0.3,       // baseline exposure multiplier
+  P56:60,        // zone concentration alert (%)
+  P58:3,         // sustained concentration cycles
+  P59_A:1,P59_B:1.5,P59_C:2, // zone class multipliers
+
+  // Connection Lifecycle
+  P74:3,         // install window (days)
+  P75:7,         // request expiry (days)
+  P76:90,        // pause max (days)
+  P78:3,         // max install retries
+
+  // Compensation
+  RC01:300,      // base payout per recharge (₹)
+  BONUS_GOOD:100,BONUS_VG:200,BONUS_EX:350, // bonus amounts
+  RECHARGE_AMT:299, // customer recharge amount (₹)
+  RECHARGE_CYCLE:30, // days between recharges
+
+  // Simulation
+  SIM_DAYS:90,
+};
+let SPR={...SPR_DEFAULTS};
+
+// ============================================================
+// SECTION 3: ZONE DATA (real Bharat clusters from Metabase)
+// ============================================================
+const ZONES=[
+  {id:'Z01',name:'Agra',classification:'ZC-B',baseDemand:4,partnerCount:41},
+  {id:'Z02',name:'Bareilly',classification:'ZC-C',baseDemand:2,partnerCount:26},
+  {id:'Z03',name:'Gorakhpur',classification:'ZC-C',baseDemand:2,partnerCount:12},
+  {id:'Z04',name:'Lucknow',classification:'ZC-A',baseDemand:5,partnerCount:10},
+  {id:'Z05',name:'Meerut',classification:'ZC-B',baseDemand:4,partnerCount:54},
+  {id:'Z06',name:'Prayagraj',classification:'ZC-B',baseDemand:4,partnerCount:12},
+];
+
+// ============================================================
+// SECTION 4: REAL BHARAT PARTNER DATA (from Metabase, Mar 2026)
+// ============================================================
+// n=name, c=city, z=zoneId, bu=baseUptime, br=baseResolution,
+// bi=baseIQ, ap=acceptProb, ac=activeConns, od=onboardingDays, iq=initQuality
+const REAL_PARTNERS=[
+  {n:'Vansh Internet',c:'Hapur',z:'Z05',bu:70,br:10.2,bi:64.6,ap:0.59,ac:76,od:638,iq:'NON_COMPLIANT'},
+  {n:'Sap IT Solutions',c:'Gorakhpur',z:'Z03',bu:70,br:8.9,bi:61.8,ap:0.575,ac:74,od:292,iq:'NON_COMPLIANT'},
+  {n:'Aman Broadband Services',c:'Agra',z:'Z01',bu:70,br:9.9,bi:60,ap:0.525,ac:78,od:392,iq:'NON_COMPLIANT'},
+  {n:'MAX BROADBAND AND CABLE TV',c:'Lucknow',z:'Z04',bu:70,br:20,bi:60,ap:0.555,ac:75,od:287,iq:'NON_COMPLIANT'},
+  {n:'prshree networks',c:'Hathras',z:'Z01',bu:70,br:10.6,bi:60,ap:0.555,ac:70,od:299,iq:'NON_COMPLIANT'},
+  {n:'Real Digital Cable LLP',c:'Agra',z:'Z01',bu:70,br:12.6,bi:60,ap:0.54,ac:75,od:392,iq:'NON_COMPLIANT'},
+  {n:'Dev Broadband',c:'Baraut',z:'Z05',bu:70,br:7.5,bi:60.8,ap:0.57,ac:71,od:379,iq:'NON_COMPLIANT'},
+  {n:'Inet Broadband',c:'Lucknow',z:'Z04',bu:70,br:8.9,bi:60.8,ap:0.57,ac:70,od:286,iq:'NON_COMPLIANT'},
+  {n:'Ansar Patholi',c:'Agra',z:'Z01',bu:70,br:5.3,bi:61.8,ap:0.575,ac:76,od:392,iq:'NON_COMPLIANT'},
+  {n:'Vipin Pal',c:'Bijnor',z:'Z05',bu:70,br:6.8,bi:60.8,ap:0.57,ac:81,od:497,iq:'NON_COMPLIANT'},
+  {n:'R Star Broadband Network',c:'Moradabad',z:'Z02',bu:70,br:5.8,bi:60,ap:0.495,ac:90,od:228,iq:'NON_COMPLIANT'},
+  {n:'Rajat Cable Network',c:'Muzaffarnagar',z:'Z05',bu:70,br:6.1,bi:60,ap:0.49,ac:90,od:376,iq:'NON_COMPLIANT'},
+  {n:'Tara Broadband',c:'Firozabad',z:'Z01',bu:70,br:6.7,bi:60,ap:0.545,ac:87,od:320,iq:'NON_COMPLIANT'},
+  {n:'Batta Cable',c:'Lucknow',z:'Z04',bu:70,br:12.1,bi:60.8,ap:0.57,ac:80,od:291,iq:'NON_COMPLIANT'},
+  {n:'DIGIWAY NET PVT LTD',c:'Prayagraj',z:'Z06',bu:70,br:9.8,bi:60,ap:0.535,ac:90,od:305,iq:'NON_COMPLIANT'},
+  {n:'Hind Network',c:'Gorakhpur',z:'Z03',bu:70,br:9.0,bi:60,ap:0.53,ac:100,od:286,iq:'NON_COMPLIANT'},
+  {n:'Rediance Entertainment Digital World',c:'Aligarh',z:'Z01',bu:70,br:8.4,bi:63.6,ap:0.585,ac:88,od:365,iq:'NON_COMPLIANT'},
+  {n:'WindNet Pvt Ltd',c:'Agra',z:'Z01',bu:70,br:10.1,bi:60,ap:0.545,ac:83,od:371,iq:'NON_COMPLIANT'},
+  {n:'Anu Bijnor',c:'Bijnor',z:'Z05',bu:70,br:4.4,bi:64.6,ap:0.59,ac:87,od:459,iq:'NON_COMPLIANT'},
+  {n:'MOHSIN CABLE NETWORK',c:'Saharanpur',z:'Z05',bu:70,br:6.8,bi:60,ap:0.54,ac:92,od:413,iq:'NON_COMPLIANT'},
+  {n:'BR Enterprises Prayagraj',c:'Prayagraj',z:'Z06',bu:70,br:6.9,bi:62.7,ap:0.58,ac:95,od:298,iq:'NON_COMPLIANT'},
+  {n:'Ashok Kumar',c:'Bijnor',z:'Z05',bu:70,br:6.2,bi:63.6,ap:0.585,ac:98,od:496,iq:'NON_COMPLIANT'},
+  {n:'Kamlesh',c:'Bijnor',z:'Z05',bu:70,br:5.4,bi:69.3,ap:0.615,ac:91,od:496,iq:'AT_RISK'},
+  {n:'Together Communication',c:'Bijnor',z:'Z05',bu:70,br:4.5,bi:62.7,ap:0.58,ac:99,od:496,iq:'NON_COMPLIANT'},
+  {n:'HI-FI Broadband Services',c:'Lucknow',z:'Z04',bu:70,br:8.2,bi:61.8,ap:0.575,ac:104,od:287,iq:'NON_COMPLIANT'},
+  {n:'MS NXGDIGITAL',c:'Gorakhpur',z:'Z03',bu:70,br:5.3,bi:60,ap:0.535,ac:114,od:284,iq:'NON_COMPLIANT'},
+  {n:'Narendra Singh HUF',c:'Bareilly',z:'Z02',bu:70,br:3.9,bi:64.6,ap:0.59,ac:113,od:352,iq:'NON_COMPLIANT'},
+  {n:'Panchsheel InfoTech services',c:'Agra',z:'Z01',bu:70,br:6.7,bi:60,ap:0.565,ac:128,od:353,iq:'NON_COMPLIANT'},
+  {n:'SHAKYA IT SOLUTIONS',c:'Agra',z:'Z01',bu:70,br:6.2,bi:60,ap:0.54,ac:136,od:362,iq:'NON_COMPLIANT'},
+  {n:'V S Communication',c:'Bijnor',z:'Z05',bu:71.2,br:3.5,bi:71.2,ap:0.625,ac:120,od:497,iq:'AT_RISK'},
+  {n:'DEEP STAR CABLE NETWORK',c:'Muzaffarnagar',z:'Z05',bu:70,br:7.1,bi:60,ap:0.565,ac:141,od:628,iq:'NON_COMPLIANT'},
+  {n:'NEERAJ INFOTECH',c:'Meerut_City',z:'Z05',bu:70,br:5.2,bi:60,ap:0.55,ac:139,od:614,iq:'NON_COMPLIANT'},
+  {n:'Shri Ram Internet',c:'Mathura',z:'Z01',bu:70,br:4.5,bi:65.5,ap:0.595,ac:141,od:347,iq:'NON_COMPLIANT'},
+  {n:'Sharma Digital',c:'Agra',z:'Z01',bu:70,br:10.5,bi:60,ap:0.56,ac:143,od:392,iq:'NON_COMPLIANT'},
+  {n:'Shiva Cable Network Bareilly',c:'Moradabad',z:'Z02',bu:70,br:20,bi:60,ap:0.485,ac:182,od:355,iq:'NON_COMPLIANT'},
+  {n:'Saleem Cable T V Network',c:'Bareilly',z:'Z02',bu:70,br:3.0,bi:64.6,ap:0.59,ac:152,od:354,iq:'NON_COMPLIANT'},
+  {n:'Gayatri Cable Network',c:'Muzaffarnagar',z:'Z05',bu:70,br:11.2,bi:63.6,ap:0.585,ac:204,od:628,iq:'NON_COMPLIANT'},
+  {n:'Nirmala cable TV network',c:'Lucknow',z:'Z04',bu:70,br:3.0,bi:63.6,ap:0.585,ac:184,od:292,iq:'NON_COMPLIANT'},
+  {n:'KGN Surya Broadband Internet',c:'Modinagar',z:'Z05',bu:70,br:6.3,bi:61.8,ap:0.575,ac:238,od:658,iq:'NON_COMPLIANT'},
+  {n:'GOYLA CABLE NETWORK',c:'Muzaffarnagar',z:'Z05',bu:70,br:3.1,bi:60,ap:0.5,ac:329,od:626,iq:'NON_COMPLIANT'},
+  {n:'National Cable TV Network',c:'Mathura',z:'Z01',bu:70,br:20,bi:60,ap:0.4,ac:8,od:305,iq:'NON_COMPLIANT'},
+  {n:'Triton Internet Services',c:'Gorakhpur',z:'Z03',bu:70,br:17.6,bi:60,ap:0.4,ac:5,od:154,iq:'NON_COMPLIANT'},
+  {n:'Chauhan Cable Network',c:'Bareilly',z:'Z02',bu:70,br:20,bi:60,ap:0.565,ac:6,od:354,iq:'NON_COMPLIANT'},
+  {n:'Tripathi Cable Network',c:'Gorakhpur',z:'Z03',bu:70,br:16.6,bi:60,ap:0.4,ac:13,od:284,iq:'NON_COMPLIANT'},
+  {n:'QURESH CABLE NETWORK',c:'Bareilly',z:'Z02',bu:70,br:20,bi:60,ap:0.46,ac:8,od:201,iq:'NON_COMPLIANT'},
+  {n:'Bharag Broadband',c:'Mathura',z:'Z01',bu:81.7,br:5.8,bi:81.7,ap:0.76,ac:7,od:346,iq:'COMPLIANT'},
+  {n:'G N Digital Cable And Broadband services',c:'Gorakhpur',z:'Z03',bu:70,br:20,bi:60,ap:0.565,ac:7,od:284,iq:'NON_COMPLIANT'},
+  {n:'REGAL ENTERTAINMENT DIGITAL WORLD',c:'Aligarh',z:'Z01',bu:70,br:20,bi:60,ap:0.465,ac:12,od:133,iq:'NON_COMPLIANT'},
+  {n:'Me Fiber Internet Service',c:'Mathura',z:'Z01',bu:81.7,br:12.5,bi:81.7,ap:0.76,ac:7,od:299,iq:'COMPLIANT'},
+  {n:'Giga Extream fiber',c:'Moradabad',z:'Z02',bu:70,br:5.5,bi:60.8,ap:0.57,ac:89,od:195,iq:'NON_COMPLIANT'},
+  {n:'Bhavya Tecnology',c:'Mathura',z:'Z01',bu:70,br:20,bi:60,ap:0.5,ac:13,od:153,iq:'NON_COMPLIANT'},
+  {n:'Maa Vasnavi internet Services',c:'Agra',z:'Z01',bu:70,br:20,bi:60,ap:0.44,ac:12,od:346,iq:'NON_COMPLIANT'},
+  {n:'Hanu digital cabel TV Network',c:'Muzaffarnagar',z:'Z05',bu:70,br:20,bi:65.5,ap:0.595,ac:12,od:371,iq:'NON_COMPLIANT'},
+  {n:'GAURAV ENTERPRISES',c:'Agra',z:'Z01',bu:75.0,br:14.3,bi:75.0,ap:0.645,ac:13,od:389,iq:'AT_RISK'},
+  {n:'Demond networks',c:'Shikohabad',z:'Z01',bu:73.1,br:15.8,bi:73.1,ap:0.635,ac:14,od:331,iq:'AT_RISK'},
+  {n:'Honey World Vision',c:'Gorakhpur',z:'Z03',bu:70,br:15.1,bi:60,ap:0.445,ac:16,od:284,iq:'NON_COMPLIANT'},
+  {n:'Usha Network',c:'Meerut_City',z:'Z05',bu:70,br:3.9,bi:64.6,ap:0.59,ac:173,od:126,iq:'NON_COMPLIANT'},
+  {n:'Yogesh cable vision',c:'Prayagraj',z:'Z06',bu:70,br:20,bi:60,ap:0.55,ac:17,od:136,iq:'NON_COMPLIANT'},
+  {n:'Anjani Broadband',c:'Moradabad',z:'Z02',bu:70,br:17.7,bi:60,ap:0.415,ac:18,od:164,iq:'NON_COMPLIANT'},
+  {n:'Soni Broadband Services',c:'Bareilly',z:'Z02',bu:70,br:12.7,bi:60,ap:0.52,ac:18,od:352,iq:'NON_COMPLIANT'},
+  {n:'Rajesh Kapoor',c:'Lucknow',z:'Z04',bu:70,br:11.5,bi:60,ap:0.475,ac:19,od:287,iq:'NON_COMPLIANT'},
+  {n:'HEX NETWORK',c:'Firozabad',z:'Z01',bu:70,br:3.0,bi:60,ap:0.445,ac:28,od:332,iq:'NON_COMPLIANT'},
+  {n:'AUM Cable Network',c:'Gorakhpur',z:'Z03',bu:70,br:20,bi:60,ap:0.53,ac:21,od:228,iq:'NON_COMPLIANT'},
+  {n:'Pappu Cable Network',c:'Bareilly',z:'Z02',bu:75.0,br:5.1,bi:75.0,ap:0.645,ac:22,od:346,iq:'AT_RISK'},
+  {n:'Agra Network',c:'Agra',z:'Z01',bu:78.8,br:20,bi:78.8,ap:0.665,ac:22,od:293,iq:'AT_RISK'},
+  {n:'E-BAND INTERNET SERVICES',c:'Budaun',z:'Z02',bu:70,br:16.6,bi:60,ap:0.475,ac:24,od:298,iq:'NON_COMPLIANT'},
+  {n:'Singh Brothers Network',c:'Prayagraj',z:'Z06',bu:70,br:11.5,bi:60,ap:0.565,ac:21,od:299,iq:'NON_COMPLIANT'},
+  {n:'Pramod Cable Network',c:'Budaun',z:'Z02',bu:70,br:14.3,bi:61.8,ap:0.575,ac:22,od:298,iq:'NON_COMPLIANT'},
+  {n:'SOHAM INFOTECH',c:'Agra',z:'Z01',bu:70,br:12.7,bi:64.6,ap:0.59,ac:21,od:354,iq:'NON_COMPLIANT'},
+  {n:'JOLLY SKY BROTHERS',c:'Lucknow',z:'Z04',bu:70,br:3.0,bi:60,ap:0.52,ac:26,od:222,iq:'NON_COMPLIANT'},
+  {n:'STARNET ONLINE',c:'Moradabad',z:'Z02',bu:70,br:20,bi:60,ap:0.565,ac:23,od:354,iq:'NON_COMPLIANT'},
+  {n:'RK Cable Network',c:'Gorakhpur',z:'Z03',bu:70,br:20,bi:60,ap:0.535,ac:25,od:284,iq:'NON_COMPLIANT'},
+  {n:'FIVE STAR NETWORK',c:'Prayagraj',z:'Z06',bu:70,br:5.8,bi:64.6,ap:0.59,ac:25,od:159,iq:'NON_COMPLIANT'},
+  {n:'Navin Internet Service',c:'Mathura',z:'Z01',bu:70,br:8.0,bi:60,ap:0.555,ac:24,od:187,iq:'NON_COMPLIANT'},
+  {n:'balaji Enterprises',c:'Agra',z:'Z01',bu:70,br:6.4,bi:63.6,ap:0.585,ac:26,od:335,iq:'NON_COMPLIANT'},
+  {n:'BUBLY CABLE',c:'Lucknow',z:'Z04',bu:70,br:13.6,bi:60,ap:0.5,ac:29,od:221,iq:'NON_COMPLIANT'},
+  {n:'Danish cable network',c:'Meerut_City',z:'Z05',bu:85,br:14.7,bi:80.8,ap:0.7,ac:0,od:811,iq:'NON_COMPLIANT'},
+  {n:'CHOICE CABLE NETWORK & INTERNET SERVICE',c:'Meerut_City',z:'Z05',bu:70,br:4.3,bi:60,ap:0.565,ac:252,od:836,iq:'NON_COMPLIANT'},
+  {n:'AVI NETWORK Sakoti',c:'Sakoti',z:'Z03',bu:70,br:8.0,bi:65.5,ap:0.595,ac:143,od:748,iq:'NON_COMPLIANT'},
+  {n:'Anaya Broadband',c:'Meerut_City',z:'Z05',bu:70,br:9.8,bi:61.8,ap:0.575,ac:21,od:729,iq:'NON_COMPLIANT'},
+  {n:'Rahul Cable TV Network',c:'Modinagar',z:'Z05',bu:70,br:15.8,bi:63.6,ap:0.585,ac:11,od:736,iq:'NON_COMPLIANT'},
+  {n:'Jaya Broadband Services ( Harsh Solution)',c:'Meerut_City',z:'Z05',bu:70,br:6.1,bi:66.5,ap:0.6,ac:86,od:1158,iq:'AT_RISK'},
+  {n:'Adi Shree Netcom',c:'Meerut_City',z:'Z05',bu:70,br:6.4,bi:61.8,ap:0.575,ac:62,od:719,iq:'NON_COMPLIANT'},
+  {n:'EASYACCESS INFOTECH',c:'Modinagar',z:'Z05',bu:70,br:17.2,bi:60,ap:0.535,ac:49,od:738,iq:'NON_COMPLIANT'},
+  {n:'Happybytes',c:'Meerut_City',z:'Z05',bu:70,br:20,bi:60,ap:0.56,ac:22,od:708,iq:'NON_COMPLIANT'},
+  {n:'BHARAT SECURITIES',c:'Modinagar',z:'Z05',bu:85,br:20,bi:80.8,ap:0.7,ac:1,od:668,iq:'NON_COMPLIANT'},
+  {n:'BALA JI DIGITAL CABLE NETWORK',c:'Muzaffarnagar',z:'Z05',bu:70,br:11.5,bi:65.5,ap:0.595,ac:31,od:628,iq:'NON_COMPLIANT'},
+  {n:'Ram Narayan',c:'Agra',z:'Z01',bu:70,br:13.8,bi:60,ap:0.555,ac:27,od:383,iq:'NON_COMPLIANT'},
+  {n:'Peetambara Trading Private limited',c:'Mathura',z:'Z01',bu:70,br:20,bi:60,ap:0.47,ac:29,od:306,iq:'NON_COMPLIANT'},
+  {n:'PALTECH INFO SERVICES PVT LTD',c:'Agra',z:'Z01',bu:70,br:14.8,bi:60,ap:0.56,ac:27,od:392,iq:'NON_COMPLIANT'},
+  {n:'GNS Fiber Pvt Ltd',c:'Agra',z:'Z01',bu:70,br:4.5,bi:60,ap:0.525,ac:32,od:366,iq:'NON_COMPLIANT'},
+  {n:'BHARAT CABLE NETWORK SERVICE',c:'Bareilly',z:'Z02',bu:71.2,br:9.6,bi:71.2,ap:0.625,ac:28,od:352,iq:'AT_RISK'},
+  {n:'Vishwas IT Services',c:'Baraut',z:'Z05',bu:70,br:17.2,bi:60,ap:0.48,ac:39,od:378,iq:'NON_COMPLIANT'},
+  {n:'Wideband Cable And Broadband Network',c:'Moradabad',z:'Z02',bu:70,br:12.8,bi:60,ap:0.4,ac:47,od:320,iq:'NON_COMPLIANT'},
+  {n:'Khun Khun Cable TV Network',c:'Hapur',z:'Z05',bu:70,br:16.6,bi:65.5,ap:0.595,ac:32,od:454,iq:'NON_COMPLIANT'},
+  {n:'Akash Digital Network',c:'Muzaffarnagar',z:'Z05',bu:70,br:3.0,bi:60,ap:0.555,ac:32,od:628,iq:'NON_COMPLIANT'},
+  {n:'Chintamani Network Solution',c:'Shikohabad',z:'Z01',bu:70,br:12.9,bi:60,ap:0.54,ac:30,od:272,iq:'NON_COMPLIANT'},
+  {n:'Shri Shyam Internet',c:'Moradabad',z:'Z02',bu:70,br:10.9,bi:60,ap:0.435,ac:38,od:147,iq:'NON_COMPLIANT'},
+  {n:'Jaiswal Vision Cable TV Network',c:'Prayagraj',z:'Z06',bu:70,br:10.3,bi:60,ap:0.56,ac:36,od:303,iq:'NON_COMPLIANT'},
+  {n:'Tiger Net Muradnagar',c:'Modinagar',z:'Z05',bu:70,br:3.8,bi:60,ap:0.505,ac:45,od:189,iq:'NON_COMPLIANT'},
+  {n:'VN TECHNOLOGY',c:'Mathura',z:'Z01',bu:70,br:19.0,bi:63.6,ap:0.585,ac:39,od:125,iq:'NON_COMPLIANT'},
+  {n:'Plexus Online',c:'Aligarh',z:'Z01',bu:70,br:13.2,bi:60,ap:0.515,ac:40,od:365,iq:'NON_COMPLIANT'},
+  {n:'Narya Handicrafts',c:'Muzaffarnagar',z:'Z05',bu:70,br:12.1,bi:64.6,ap:0.59,ac:33,od:456,iq:'NON_COMPLIANT'},
+  {n:'A S Network Solutions',c:'Modinagar',z:'Z05',bu:70,br:12.5,bi:60,ap:0.56,ac:38,od:403,iq:'NON_COMPLIANT'},
+  {n:'OM IT SOLUTION',c:'Baraut',z:'Z05',bu:70,br:7.2,bi:65.5,ap:0.595,ac:36,od:378,iq:'NON_COMPLIANT'},
+  {n:'Nand Lal Yadav',c:'Prayagraj',z:'Z06',bu:70,br:3.0,bi:60,ap:0.565,ac:37,od:154,iq:'NON_COMPLIANT'},
+  {n:'Saraswati Data Services',c:'Prayagraj',z:'Z06',bu:70,br:12.1,bi:64.6,ap:0.59,ac:38,od:301,iq:'NON_COMPLIANT'},
+  {n:'Durga cable network',c:'Agra',z:'Z01',bu:70,br:9.5,bi:60,ap:0.565,ac:39,od:305,iq:'NON_COMPLIANT'},
+  {n:'7R Network Solutions',c:'Moradabad',z:'Z02',bu:70,br:17.4,bi:66.5,ap:0.6,ac:38,od:352,iq:'AT_RISK'},
+  {n:'Vikas Electronics',c:'Muzaffarnagar',z:'Z05',bu:70,br:6.8,bi:60,ap:0.555,ac:43,od:511,iq:'NON_COMPLIANT'},
+  {n:'Megapath Netcom India',c:'Prayagraj',z:'Z06',bu:70,br:13.9,bi:68.4,ap:0.61,ac:43,od:258,iq:'AT_RISK'},
+  {n:'SWASTIK ENTERPRISES',c:'Lucknow',z:'Z04',bu:70,br:4.5,bi:61.8,ap:0.575,ac:45,od:130,iq:'NON_COMPLIANT'},
+  {n:'OM SAI NET',c:'Modinagar',z:'Z05',bu:70,br:7.6,bi:60,ap:0.49,ac:56,od:189,iq:'NON_COMPLIANT'},
+  {n:'Ezynet internet services',c:'Mathura',z:'Z01',bu:70,br:3.9,bi:60,ap:0.525,ac:38,od:203,iq:'NON_COMPLIANT'},
+  {n:'Rashmi Singh Chowhan',c:'Prayagraj',z:'Z06',bu:72.2,br:9.1,bi:72.2,ap:0.63,ac:47,od:303,iq:'AT_RISK'},
+  {n:'Unique Networks',c:'Firozabad',z:'Z01',bu:70,br:6.0,bi:60,ap:0.54,ac:48,od:227,iq:'NON_COMPLIANT'},
+  {n:'RSP Telecom',c:'Mathura',z:'Z01',bu:70,br:7.9,bi:60,ap:0.55,ac:47,od:346,iq:'NON_COMPLIANT'},
+  {n:'Shri Ram Pankaj Cable Net',c:'Bareilly',z:'Z02',bu:70,br:8.7,bi:60,ap:0.55,ac:50,od:354,iq:'NON_COMPLIANT'},
+  {n:'Youngit Solutions',c:'Agra',z:'Z01',bu:70,br:12.2,bi:68.4,ap:0.61,ac:42,od:392,iq:'AT_RISK'},
+  {n:'Rhythm Enterprises',c:'Prayagraj',z:'Z06',bu:70,br:6.8,bi:63.6,ap:0.585,ac:49,od:306,iq:'NON_COMPLIANT'},
+  {n:'ONE INFRA & TECHNOLOGY',c:'Muzaffarnagar',z:'Z05',bu:70,br:4.4,bi:60,ap:0.51,ac:56,od:397,iq:'NON_COMPLIANT'},
+  {n:'Khushi Cable TV Network Aligarh',c:'Aligarh',z:'Z01',bu:70,br:3.0,bi:60,ap:0.545,ac:52,od:301,iq:'NON_COMPLIANT'},
+  {n:'Solid Network Services',c:'Muzaffarnagar',z:'Z05',bu:70,br:4.9,bi:64.6,ap:0.59,ac:48,od:376,iq:'NON_COMPLIANT'},
+  {n:'Utkarsh Digital Network (Aneeta Devi)',c:'Prayagraj',z:'Z06',bu:70,br:5.6,bi:63.6,ap:0.585,ac:53,od:305,iq:'NON_COMPLIANT'},
+  {n:'Manoj Internet Services Private Limited',c:'Hapur',z:'Z05',bu:70,br:20,bi:60,ap:0.495,ac:72,od:648,iq:'NON_COMPLIANT'},
+  {n:'J S Network',c:'Shamli',z:'Z05',bu:70,br:4.5,bi:60,ap:0.54,ac:55,od:292,iq:'NON_COMPLIANT'},
+  {n:'EDN Broadband services',c:'Shikohabad',z:'Z01',bu:70,br:13.6,bi:69.3,ap:0.615,ac:48,od:331,iq:'AT_RISK'},
+  {n:'R K Cable Network',c:'Muzaffarnagar',z:'Z05',bu:70,br:3.0,bi:60,ap:0.55,ac:56,od:622,iq:'NON_COMPLIANT'},
+  {n:'Khushi cable network Gorakhpur',c:'Gorakhpur',z:'Z03',bu:70,br:16.0,bi:61.8,ap:0.575,ac:55,od:292,iq:'NON_COMPLIANT'},
+  {n:'Goldi Groups',c:'Bareilly',z:'Z02',bu:70,br:5.4,bi:62.7,ap:0.58,ac:52,od:355,iq:'NON_COMPLIANT'},
+  {n:'Singh Cable Network Bareilly',c:'Bareilly',z:'Z02',bu:70,br:6.8,bi:60,ap:0.52,ac:65,od:346,iq:'NON_COMPLIANT'},
+  {n:'Tripti Broadband',c:'Hapur',z:'Z05',bu:70,br:6.8,bi:60,ap:0.555,ac:63,od:640,iq:'NON_COMPLIANT'},
+  {n:'A To Z Cable Network',c:'Bareilly',z:'Z02',bu:70,br:11.5,bi:69.3,ap:0.615,ac:54,od:355,iq:'AT_RISK'},
+  {n:'M/S K V ENTERPRISES',c:'Moradabad',z:'Z02',bu:70,br:8.5,bi:60,ap:0.565,ac:56,od:221,iq:'NON_COMPLIANT'},
+  {n:'Star Fiber Net',c:'Gorakhpur',z:'Z03',bu:70,br:3.0,bi:60,ap:0.54,ac:64,od:298,iq:'NON_COMPLIANT'},
+  {n:'AVSM ENTERPRISES',c:'Moradabad',z:'Z02',bu:70,br:8.7,bi:66.5,ap:0.6,ac:58,od:287,iq:'AT_RISK'},
+  {n:'EXCL NETWORK',c:'Modinagar',z:'Z05',bu:70,br:12.5,bi:60,ap:0.51,ac:63,od:189,iq:'NON_COMPLIANT'},
+  {n:'One Infra & Technologies',c:'Shamli',z:'Z05',bu:70,br:5.2,bi:60,ap:0.505,ac:71,od:236,iq:'NON_COMPLIANT'},
+  {n:'A C Enterprises',c:'Meerut_City',z:'Z05',bu:70,br:9.4,bi:60,ap:0.535,ac:74,od:390,iq:'NON_COMPLIANT'},
+  {n:'Pradeep Kumar Jain',c:'Bijnor',z:'Z05',bu:70,br:7.2,bi:60,ap:0.53,ac:69,od:496,iq:'NON_COMPLIANT'},
+  {n:'KGN Network',c:'Modinagar',z:'Z05',bu:70,br:6.4,bi:60,ap:0.545,ac:71,od:174,iq:'NON_COMPLIANT'},
+  {n:'Khushi Enterprises',c:'Firozabad',z:'Z01',bu:70,br:11.1,bi:60,ap:0.535,ac:70,od:228,iq:'NON_COMPLIANT'},
+  {n:'FIBER LINK',c:'Budaun',z:'Z02',bu:70,br:14.3,bi:60.8,ap:0.57,ac:65,od:297,iq:'NON_COMPLIANT'},
+  {n:'Rahul Sharma',c:'Bijnor',z:'Z05',bu:70,br:4.6,bi:60,ap:0.535,ac:74,od:496,iq:'NON_COMPLIANT'},
+  {n:'Jeevan Khanna',c:'Lucknow',z:'Z04',bu:70,br:15.0,bi:60.8,ap:0.57,ac:71,od:287,iq:'NON_COMPLIANT'},
+  {n:'Shri Balaji Network',c:'Meerut_City',z:'Z05',bu:70,br:14.3,bi:60,ap:0.54,ac:32,od:1195,iq:'NON_COMPLIANT'},
+  {n:'Sandeep Cable Network',c:'Meerut_City',z:'Z05',bu:70,br:3.5,bi:62.7,ap:0.58,ac:130,od:1031,iq:'NON_COMPLIANT'},
+  {n:'Minto Cable Network',c:'Meerut_City',z:'Z05',bu:85,br:4.7,bi:80.8,ap:0.7,ac:1,od:902,iq:'NON_COMPLIANT'},
+  {n:'Shiva Broadband',c:'Hapur',z:'Z05',bu:76.0,br:9.8,bi:76.0,ap:0.65,ac:5,od:648,iq:'AT_RISK'},
+  {n:'NEXUS INTERNET',c:'Firozabad',z:'Z01',bu:85,br:16,bi:80.8,ap:0.7,ac:0,od:332,iq:'NON_COMPLIANT'},
+  {n:'Perfect Communication',c:'Bijnor',z:'Z05',bu:85,br:11.7,bi:80.8,ap:0.7,ac:0,od:392,iq:'NON_COMPLIANT'},
+  {n:'BALAJI BROADBAND AND ENGINEERING WORKS',c:'Bareilly',z:'Z02',bu:70,br:20,bi:60,ap:0.4,ac:4,od:193,iq:'NON_COMPLIANT'},
+  {n:'Chaudhary Enterprises',c:'Moradabad',z:'Z02',bu:70,br:6.4,bi:60,ap:0.415,ac:4,od:85,iq:'NON_COMPLIANT'},
+  {n:'VPN Broadband',c:'Agra',z:'Z01',bu:95.0,br:5.5,bi:95.0,ap:0.9,ac:2,od:350,iq:'COMPLIANT'},
+  {n:'Kanha Enterprise',c:'Hapur',z:'Z05',bu:70,br:8.7,bi:60,ap:0.545,ac:11,od:646,iq:'NON_COMPLIANT'}
+];
+
+function generatePartners(){
+  const partners=[];
+  REAL_PARTNERS.forEach((rp,i)=>{
+    const baseUptime=rp.bu;
+    // Determine initial state based on real performance data
+    // Partners who are already NON_COMPLIANT start with AT_RISK domains (P17 counters advanced)
+    // This reflects that the OS is kicking in on an existing reality, not a fresh start
+    const isNC=rp.iq==='NON_COMPLIANT';
+    const isAR=rp.iq==='AT_RISK';
+    const isOK=rp.iq==='COMPLIANT';
+
+    // Set initial domain states based on real quality
+    const ssState=baseUptime>=SPR.THRESH_SS?'COMPLIANT':'AT_RISK';
+    const srState=rp.br<=SPR.THRESH_SR?'COMPLIANT':'AT_RISK';
+    const iqState=rp.bi>=SPR.THRESH_IQ?'COMPLIANT':'AT_RISK';
+
+    // For NC partners, advance their P17 counters to reflect they've been poor for a while
+    // (the Bharat Monitor already classified 136 as NC based on months of data)
+    const p17SS=ssState==='AT_RISK'?(isNC?randInt(2,SPR.P17_SS-1):randInt(0,1)):0;
+    const p17SR=srState==='AT_RISK'?(isNC?randInt(2,SPR.P17_SR-1):randInt(0,1)):0;
+    const p17IQ=iqState==='AT_RISK'?(isNC?randInt(1,SPR.P17_IQ-1):0):0;
+
+    // Composite: derived from domain states (exact to Quality OS)
+    let composite='PENDING'; // Will be set on first evaluation
+    if(isOK) composite='COMPLIANT';
+    else if(isAR) composite='AT_RISK';
+    // NC partners start as AT_RISK — they haven't been evaluated by the NEW system yet
+    // The P17 counters will escalate them to NC within the first few windows
+    else composite='AT_RISK';
+
+    // Enforcement: NC partners may already be on watch
+    let perfState='CLEAR';
+    let perfWindowCounter=0;
+    if(isNC){
+      perfState='PATTERN_WATCH'; // E01=1, immediate on first AT_RISK (structural)
+      perfWindowCounter=0; // Will accumulate as sim runs
+    }
+
+    // Exposure band based on real tenure
+    // rampCycles = how many eval windows they've been through (od / P01)
+    // All existing partners have been around 200-640 days — well past any ramp period
+    let band='ELIGIBLE_BASELINE';
+    let rampCycles=Math.min(SPR.P45,Math.floor(rp.od/SPR.P01));
+    let compliantCycles=0;
+    if(isOK){
+      band='ELIGIBLE_FULL';
+      compliantCycles=SPR.P42+1;
+    } else if(rampCycles>=SPR.P45){
+      // Existing partners past ramp: AR/NC get REDUCED (not stuck at BASELINE)
+      band='ELIGIBLE_REDUCED';
+    }
+
+    partners.push({
+      id:'CSP-'+String(i+1).padStart(3,'0'),
+      name:rp.n,
+      city:rp.c,
+      zoneId:rp.z,
+      tier:isOK?'excellent':isAR?'good':'mediocre', // rough mapping for display
+      onboardingDay:-rp.od,
+      baseUptime:baseUptime,
+      baseResolution:rp.br,
+      baseIQ:rp.bi,
+      acceptProb:rp.ap,
+      // Dynamic state — reflects current reality, not Day 0 fresh
+      quality:{
+        ss:{value:baseUptime,state:ssState,p17Counter:p17SS},
+        sr:{value:rp.br,state:srState,p17Counter:p17SR},
+        iq:{value:rp.bi,state:iqState,p17Counter:p17IQ},
+        composite:composite,
+        prevComposite:null,
+        wasNonCompliant:false,
+        recoveryCounter:0,
+        windowsEvaluated:0,
+      },
+      enforcement:{
+        perfState:perfState,
+        perfWindowCounter:perfWindowCounter,
+        perfRestrictedDay:null,
+        fpvState:'FPV_CLEAR',
+        fpvFlaggedDay:null,
+        fpvType:null,
+        fpvSeverity:null,
+        suspendedDay:null,
+      },
+      exposure:{
+        band:band,
+        compliantCycles:compliantCycles,
+        rampCycles:rampCycles,
+        recoveryCycles:0,
+        concentrationCycles:0,
+      },
+      connections:{active:rp.ac,pending:0},
+      wallet:{balance:randInt(3000,15000),frozen:false,holdAmount:0},
+      compensation:{baseThisPeriod:0,bonusThisPeriod:0,bonusTier:'NONE',totalEarned:0},
+      stats:{offered:0,accepted:0,declined:0,installed:0,installsThisWindow:0,installSuccessThisWindow:0},
+    });
+  });
+  return partners;
+}
+
+// ============================================================
+// SECTION 5: CONNECTION GENERATION (uses real active connection counts)
+// ============================================================
+let nextConnId=1;
+function generateInitialConnections(partners){
+  const conns=[];
+  partners.forEach(p=>{
+    for(let i=0;i<p.connections.active;i++){
+      const rechargeDay=-randInt(1,SPR.RECHARGE_CYCLE);
+      conns.push({
+        id:'CONN-'+String(nextConnId++).padStart(5,'0'),
+        zoneId:p.zoneId,
+        cspId:p.id,
+        state:'ACTIVE',
+        createdDay:-randInt(30,300),
+        assignedDay:-randInt(30,300),
+        acceptedDay:-randInt(30,300),
+        activatedDay:-randInt(10,200),
+        lastRechargeDay:rechargeDay,
+        nextRechargeDay:rechargeDay+SPR.RECHARGE_CYCLE,
+        pausedDay:null,
+        retryCount:0,
+        declinedBy:[],
+        installDay:null,
+      });
+    }
+  });
+  return conns;
+}
+
+// ============================================================
+// SECTION 6: SIMULATION STATE
+// ============================================================
+const stateHistory=[]; // deep snapshots for Step Back (max 30)
+
+let S={
+  day:0,
+  partners:[],
+  connections:[],
+  events:[],
+  injections:[],
+  qualityWindow:0,
+  connectionFlows:[], // recent routing decisions for display
+  running:false,
+  speed:2500,
+  timer:null,
+  evFilter:'all',
+  activeView:'reference',
+  evPlainMode:false, // plain English event log
+  selectedPartnerId:null,
+  selectedZoneId:null,
+  pendingP15:[],  // {day, partnerId, type, payload} - delayed consequence triggers
+  narrative:'',   // current day's narrative summary
+  timeline:[],    // array of {day, entries:[{os, text}]}
+  tlFilter:'all', // timeline filter
+  refTab:'glossary', // reference sub-tab
+  walkthroughs:{}, activeWalkthrough:'day_in_life', narrativeHistory:[], // walkthrough states + nar history
+  focusZone:null, // null = show all zones, or zone ID for single-zone focus
+};
+
+// ============================================================
+// SECTION 7: EVENT BUS
+// ============================================================
+function emit(type,category,partnerId,desc,why,payload={}){
+  const ev={
+    id:S.events.length,
+    day:S.day,
+    type:type,
+    category:category, // quality|enforcement|routing|compensation|fpv|lifecycle|injection|concentration
+    partnerId:partnerId,
+    desc:desc,
+    why:why||[],
+    payload:payload,
+    expanded:false,
+  };
+  S.events.push(ev);
+  return ev;
+}
+
+// ============================================================
+// SECTION 8: QUALITY OS ENGINE
+// ============================================================
+function qualityEvaluateDomain(partner,domain,metric,threshold,p17Limit,isHigherBetter){
+  const d=partner.quality[domain];
+  const prev=d.state;
+  d.value=metric;
+
+  // Check threshold (for resolution: lower is better)
+  const meetsThreshold=isHigherBetter?(metric>=threshold):(metric<=threshold);
+
+  if(d.state==='NON_COMPLIANT'){
+    // Can only recover if metric improves to at least threshold
+    if(meetsThreshold){
+      d.state='COMPLIANT';
+      d.p17Counter=0;
+      return{changed:prev!=='COMPLIANT',prev,now:'COMPLIANT'};
+    }
+    // Still NC
+    return{changed:false,prev,now:'NON_COMPLIANT'};
+  }
+
+  if(meetsThreshold){
+    d.state='COMPLIANT';
+    d.p17Counter=0;
+    return{changed:prev!=='COMPLIANT',prev,now:'COMPLIANT'};
+  }else{
+    // Below threshold
+    d.p17Counter++;
+    if(d.p17Counter>=p17Limit){
+      // P17 chronic escalation
+      d.state='NON_COMPLIANT';
+      return{changed:true,prev,now:'NON_COMPLIANT',chronic:true,windowCount:d.p17Counter};
+    }else{
+      d.state='AT_RISK';
+      return{changed:prev!=='AT_RISK',prev,now:'AT_RISK',windowCount:d.p17Counter};
+    }
+  }
+}
+
+function qualityEvaluatePartner(partner){
+  // Skip if below minimum connections (P12)
+  if(partner.connections.active<SPR.P12){
+    return; // Not enough data to evaluate
+  }
+
+  // Compute metrics with noise
+  const ssMetric=Math.max(0,Math.min(100,partner.baseUptime+randRange(-3,3)));
+  const srMetric=Math.max(0,partner.baseResolution+randRange(-1,1));
+  // IQ: skip if not enough installs (P18)
+  const hasEnoughInstalls=partner.stats.installsThisWindow>=SPR.P18;
+  const iqMetric=hasEnoughInstalls?Math.max(0,Math.min(100,partner.baseIQ+randRange(-4,4))):null;
+
+  const reasons=[];
+
+  // Evaluate SS
+  const ssResult=qualityEvaluateDomain(partner,'ss',ssMetric,SPR.THRESH_SS,SPR.P17_SS,true);
+  if(ssResult.changed){
+    let r=`Service Stability: ${ssMetric.toFixed(1)}% (threshold: ${SPR.THRESH_SS}%) → ${ssResult.now}`;
+    if(ssResult.chronic)r+=` [P17 chronic: ${ssResult.windowCount} consecutive AT_RISK windows >= P17-SS(${SPR.P17_SS})]`;
+    reasons.push(r);
+  }
+
+  // Evaluate SR
+  const srResult=qualityEvaluateDomain(partner,'sr',srMetric,SPR.THRESH_SR,SPR.P17_SR,false);
+  if(srResult.changed){
+    let r=`Service Resolution: ${srMetric.toFixed(1)}h (threshold: ${SPR.THRESH_SR}h) → ${srResult.now}`;
+    if(srResult.chronic)r+=` [P17 chronic: ${srResult.windowCount} consecutive AT_RISK windows >= P17-SR(${SPR.P17_SR})]`;
+    reasons.push(r);
+  }
+
+  // Evaluate IQ (only if enough installs)
+  if(iqMetric!==null){
+    const iqResult=qualityEvaluateDomain(partner,'iq',iqMetric,SPR.THRESH_IQ,SPR.P17_IQ,true);
+    if(iqResult.changed){
+      let r=`Installation Quality: ${iqMetric.toFixed(1)}% (threshold: ${SPR.THRESH_IQ}%) → ${iqResult.now}`;
+      if(iqResult.chronic)r+=` [P17 chronic: ${iqResult.windowCount} windows >= P17-IQ(${SPR.P17_IQ})]`;
+      reasons.push(r);
+    }
+  }
+
+  // Compute composite
+  const ss=partner.quality.ss.state;
+  const sr=partner.quality.sr.state;
+  const iq=partner.quality.iq.state;
+  const prevComposite=partner.quality.composite;
+
+  let composite;
+  if(ss==='NON_COMPLIANT'||sr==='NON_COMPLIANT'||iq==='NON_COMPLIANT'){
+    composite='NON_COMPLIANT';
+  }else if(ss==='AT_RISK'||sr==='AT_RISK'||iq==='AT_RISK'){
+    composite='AT_RISK';
+  }else if(ss==='COMPLIANT'&&sr==='COMPLIANT'&&(iq==='COMPLIANT'||iq==='PENDING')){
+    composite='COMPLIANT';
+  }else{
+    composite=prevComposite==='PENDING'?'PENDING':prevComposite;
+  }
+
+  // RECOVERY detection: was NC, now not NC, but not yet proven COMPLIANT
+  if(prevComposite==='NON_COMPLIANT'&&composite!=='NON_COMPLIANT'&&composite!=='COMPLIANT'){
+    composite='RECOVERY';
+    partner.quality.recoveryCounter++;
+  }else if(prevComposite==='RECOVERY'){
+    if(composite==='COMPLIANT'){
+      partner.quality.recoveryCounter=0;
+      partner.quality.wasNonCompliant=false;
+    }else if(composite==='NON_COMPLIANT'){
+      partner.quality.recoveryCounter=0;
+      composite='NON_COMPLIANT';
+    }else{
+      partner.quality.recoveryCounter++;
+      composite='RECOVERY';
+    }
+  }
+
+  if(composite==='NON_COMPLIANT')partner.quality.wasNonCompliant=true;
+
+  partner.quality.prevComposite=prevComposite;
+  partner.quality.composite=composite;
+  partner.quality.windowsEvaluated++;
+
+  // Reset per-window stats
+  partner.stats.installsThisWindow=0;
+  partner.stats.installSuccessThisWindow=0;
+
+  // Emit event if composite changed
+  if(composite!==prevComposite&&prevComposite!==null){
+    reasons.unshift(`Composite: ${prevComposite} → ${composite}`);
+    emit('QUAL_STATE_'+composite,'quality',partner.id,
+      `${partner.name}: ${prevComposite} → ${composite}`,
+      reasons.concat([`Rule: Quality_OS §6, evaluation window ${partner.quality.windowsEvaluated}`])
+    );
+
+    // Queue P15 delayed consequence if moving to worse state
+    if(composite==='NON_COMPLIANT'||composite==='AT_RISK'){
+      S.pendingP15.push({
+        triggerDay:S.day+SPR.P15,
+        partnerId:partner.id,
+        type:'QUALITY_CONSEQUENCE',
+        composite:composite,
+      });
+    }
+  }
+}
+
+// ============================================================
+// SECTION 9: ENFORCEMENT OS ENGINE
+// ============================================================
+function enforcementPerformanceTrack(partner){
+  const q=partner.quality.composite;
+  const e=partner.enforcement;
+  const prev=e.perfState;
+  const reasons=[];
+
+  // INV-ENF-06: Auto-clear on COMPLIANT (immediate, no probation)
+  if(q==='COMPLIANT'){
+    if(prev!=='CLEAR'){
+      e.perfState='CLEAR';
+      e.perfWindowCounter=0;
+      reasons.push(`COMPLIANT received → auto-clear to CLEAR (INV-ENF-06, no probation)`);
+      reasons.push(`Counter reset to 0`);
+      emit('ENF_PERF_CLEAR','enforcement',partner.id,
+        `${partner.name}: ${prev} → CLEAR (auto-clear)`,
+        reasons.concat(['Rule: Enforcement_OS §6.1, INV-ENF-06'])
+      );
+      // Lift restrictions
+      if(prev==='RESTRICTED'||prev==='PRE_EXIT'){
+        emit('ENFORCE_TRIGGER_RESTRICTION_LIFTED','enforcement',partner.id,
+          `${partner.name}: Restriction lifted`,
+          ['COMPLIANT restored','Bonus eligibility resumes','Routing allocation restores',
+           'Rule: Enforcement_OS §7, ENFORCE_TRIGGER_RESTRICTION_LIFTED']
+        );
+      }
+    }
+    return;
+  }
+
+  // INV-ENF-05: Recovery freeze
+  if(q==='RECOVERY'){
+    reasons.push(`RECOVERY received → enforcement FREEZE (INV-ENF-05)`);
+    reasons.push(`Current posture ${e.perfState} held. No escalation. No rollback.`);
+    reasons.push(`Counter frozen at ${e.perfWindowCounter} (not reset)`);
+    // Don't emit unless first time entering freeze
+    if(prev!==e.perfState){
+      emit('ENF_PERF_FREEZE','enforcement',partner.id,
+        `${partner.name}: Enforcement frozen during RECOVERY`,reasons
+      );
+    }
+    return;
+  }
+
+  // AT_RISK: enter PATTERN_WATCH (E01=1, immediate, structural)
+  if(q==='AT_RISK'){
+    if(e.perfState==='CLEAR'){
+      e.perfState='PATTERN_WATCH';
+      e.perfWindowCounter=0;
+      emit('ENF_PATTERN_WATCH','enforcement',partner.id,
+        `${partner.name}: CLEAR → PATTERN_WATCH (internal)`,
+        [`AT_RISK detected → immediate entry (E01=${SPR.E01}, structural)`,
+         'PATTERN_WATCH is internal — CSP does not see this state',
+         'Rule: Enforcement_OS §6.1, E01']
+      );
+    }
+    // If already in PATTERN_WATCH or higher, AT_RISK doesn't escalate further
+    // but doesn't reset counter either
+    return;
+  }
+
+  // NON_COMPLIANT: count windows, escalate
+  if(q==='NON_COMPLIANT'){
+    e.perfWindowCounter++;
+
+    if(e.perfState==='CLEAR'){
+      // Jump to PATTERN_WATCH first (might happen if first eval is NC)
+      e.perfState='PATTERN_WATCH';
+      emit('ENF_PATTERN_WATCH','enforcement',partner.id,
+        `${partner.name}: CLEAR → PATTERN_WATCH`,
+        ['NON_COMPLIANT detected, entering PATTERN_WATCH first',
+         'Rule: Enforcement_OS §6.1']
+      );
+    }
+
+    if(e.perfState==='PATTERN_WATCH'&&e.perfWindowCounter>=SPR.E02){
+      e.perfState='RESTRICTED';
+      e.perfRestrictedDay=S.day;
+      e.perfWindowCounter=0; // reset for next stage counting
+      emit('ENF_RESTRICTED','enforcement',partner.id,
+        `${partner.name}: PATTERN_WATCH → RESTRICTED`,
+        [`NON_COMPLIANT for ${SPR.E02} consecutive windows >= E02(${SPR.E02})`,
+         'ENFORCE_TRIGGER_RESTRICTION emitted',
+         'Downstream: Compensation → bonus paused, Allocation → routing tapered',
+         'Rule: Enforcement_OS §6.1, E02']
+      );
+    }else if(e.perfState==='RESTRICTED'&&e.perfWindowCounter>=SPR.E03){
+      e.perfState='PRE_EXIT';
+      emit('ENF_PRE_EXIT','enforcement',partner.id,
+        `${partner.name}: RESTRICTED → PRE_EXIT`,
+        [`NON_COMPLIANT for ${SPR.E03} additional windows beyond RESTRICTED >= E03(${SPR.E03})`,
+         'ENFORCE_TRIGGER_PRE_EXIT emitted → Exit OS begins B1 viability assessment',
+         'CSP participation under formal review',
+         'Rule: Enforcement_OS §6.1, E03']
+      );
+    }
+  }
+}
+
+function enforcementFPVTrack(partner,fpvType,severity){
+  const e=partner.enforcement;
+  const reasons=[];
+
+  if(e.fpvState==='FPV_CLEAR'){
+    e.fpvState='FPV_FLAGGED';
+    e.fpvFlaggedDay=S.day;
+    e.fpvType=fpvType;
+    e.fpvSeverity=severity;
+    const suspDay=S.day+SPR.E04;
+    const termDay=severity==='CRITICAL'?suspDay+1:S.day+SPR.E04*2;
+    const why=[
+      `FPV event detected: ${fpvType}`,
+      `Severity: ${severity}`,
+      `Investigation starts now — ${SPR.E04}-day window (Day ${S.day} → Day ${suspDay})`,
+      severity==='CRITICAL'
+        ?`CRITICAL: auto-suspend Day ${suspDay}, terminate Day ${termDay} (fast track)`
+        :`SERIOUS: auto-suspend Day ${suspDay} if unresolved, terminate Day ${termDay}`,
+      'Wallet frozen, no new customers routed during investigation',
+      'Performance ladder bypassed entirely (P15 BYPASS)',
+      'Rule: Enforcement_OS §6.2, FPV Bypass Rule'
+    ];
+    emit('ENF_FPV_FLAGGED','fpv',partner.id,
+      `${partner.name}: FPV FLAGGED — ${fpvType} (${severity}). Investigation: ${SPR.E04} days → suspend Day ${suspDay} → terminate Day ${termDay}`,why
+    );
+    // Freeze wallet
+    partner.wallet.frozen=true;
+    partner.wallet.holdAmount=severity==='CRITICAL'?partner.wallet.balance:Math.min(50000,partner.wallet.balance);
+  }
+}
+
+function enforcementFPVTick(partner){
+  const e=partner.enforcement;
+  if(e.fpvState!=='FPV_FLAGGED'&&e.fpvState!=='SUSPENDED')return;
+
+  // FPV_FLAGGED: check if investigation window expired
+  if(e.fpvState==='FPV_FLAGGED'&&e.fpvFlaggedDay!==null){
+    const elapsed=S.day-e.fpvFlaggedDay;
+    if(elapsed>=SPR.E04&&SPR.E05){
+      // Auto-suspend
+      e.fpvState='SUSPENDED';
+      e.suspendedDay=S.day;
+      const termDay2=e.fpvSeverity==='CRITICAL'?S.day+1:e.fpvFlaggedDay+SPR.E04*2;
+      emit('ENF_SUSPENDED','fpv',partner.id,
+        `${partner.name}: FPV_FLAGGED → SUSPENDED (Day ${elapsed} of investigation — window expired)`,
+        [`${SPR.E04}-day investigation window expired without resolution (flagged Day ${e.fpvFlaggedDay})`,
+         'All routing stopped — zero new customers',
+         'All payouts frozen, existing customers being migrated',
+         e.fpvSeverity==='CRITICAL'?`CRITICAL severity: termination tomorrow (Day ${termDay2})`:`Next: termination on Day ${termDay2} if no resolution (${termDay2-S.day} days remaining)`,
+         'Rule: Enforcement_OS §6.2, E04/E05']
+      );
+    }
+  }
+
+  // SUSPENDED: check for termination (2×E04 without resolution)
+  if(e.fpvState==='SUSPENDED'&&e.suspendedDay!==null){
+    const elapsed=S.day-e.fpvFlaggedDay;
+    if(elapsed>=SPR.E04*2||(e.fpvSeverity==='CRITICAL'&&S.day-e.suspendedDay>=1)){
+      e.fpvState='TERMINATED';
+      const totalDays=S.day-e.fpvFlaggedDay;
+      emit('ENF_TERMINATED','fpv',partner.id,
+        `${partner.name}: SUSPENDED → TERMINATED (irreversible, ${totalDays} days since flagging)`,
+        [e.fpvSeverity==='CRITICAL'?`Severity = CRITICAL → fast-track termination (1 day after suspension)`:`Full investigation + suspension period exhausted (${totalDays} of ${SPR.E04*2} days)`,
+         'TERMINATED is irreversible — no appeal (INV-ENF-08)',
+         'Exit OS activated: formal notice → customer migration → asset recovery',
+         `Timeline: Flagged Day ${e.fpvFlaggedDay} → Suspended Day ${e.suspendedDay} → Terminated Day ${S.day}`,
+         'Rule: Enforcement_OS §6.2, INV-ENF-08']
+      );
+    }
+  }
+}
+
+// ============================================================
+// SECTION 10: D&A ROUTING ENGINE
+// ============================================================
+function getExposureBand(partner){
+  const q=partner.quality.composite;
+  const e=partner.enforcement;
+
+  // INELIGIBLE checks
+  if(e.fpvState==='SUSPENDED'||e.fpvState==='TERMINATED')return'INELIGIBLE_ENFORCEMENT';
+  if(q==='NON_COMPLIANT')return'INELIGIBLE_QUALITY';
+
+  // ELIGIBLE_CAPPED check (concentration)
+  if(partner.exposure.band==='ELIGIBLE_CAPPED')return'ELIGIBLE_CAPPED';
+
+  // Ramp period
+  if(partner.exposure.rampCycles<SPR.P45)return'ELIGIBLE_BASELINE';
+
+  // Recovery window
+  if(q==='RECOVERY'||partner.exposure.recoveryCycles>0&&partner.exposure.recoveryCycles<SPR.P43)
+    return'ELIGIBLE_REDUCED';
+
+  // AT_RISK
+  if(q==='AT_RISK')return'ELIGIBLE_REDUCED';
+
+  // COMPLIANT for enough cycles
+  if(q==='COMPLIANT'&&partner.exposure.compliantCycles>=SPR.P42)return'ELIGIBLE_FULL';
+
+  // COMPLIANT but not enough cycles yet
+  if(q==='COMPLIANT')return'ELIGIBLE_REDUCED';
+
+  return'ELIGIBLE_BASELINE';
+}
+
+function getExposureMultiplier(band){
+  switch(band){
+    case'ELIGIBLE_FULL':return 1.0;
+    case'ELIGIBLE_REDUCED':return SPR.P44;
+    case'ELIGIBLE_BASELINE':return SPR.P53;
+    default:return 0;
+  }
+}
+
+function getQualityRank(composite){
+  switch(composite){
+    case'COMPLIANT':return 3;
+    case'AT_RISK':case'RECOVERY':return 2;
+    case'PENDING':return 1;
+    default:return 0;
+  }
+}
+
+function routeConnection(zoneId){
+  // Get eligible CSPs in this zone
+  const zoneCsps=S.partners.filter(p=>p.zoneId===zoneId);
+  const eligible=[];
+  const ineligibleReasons={};
+
+  zoneCsps.forEach(p=>{
+    const band=p.exposure.band;
+    // Stage 1: Eligibility Gate
+    if(band.startsWith('INELIGIBLE')){
+      ineligibleReasons[p.id]=`${band}`;return;
+    }
+    if(band==='ELIGIBLE_CAPPED'){
+      ineligibleReasons[p.id]='ELIGIBLE_CAPPED (concentration throttle)';return;
+    }
+    if(p.enforcement.perfState==='PRE_EXIT'){
+      // Still eligible but may be under review
+    }
+    if(p.enforcement.fpvState==='SUSPENDED'||p.enforcement.fpvState==='TERMINATED'){
+      ineligibleReasons[p.id]='Enforcement suspended/terminated';return;
+    }
+    // Capacity check (P46)
+    const cap=SPR.P46;
+    if(p.connections.active+p.connections.pending>=cap){
+      ineligibleReasons[p.id]=`At capacity (${p.connections.active+p.connections.pending}/${cap})`;return;
+    }
+    eligible.push(p);
+  });
+
+  if(eligible.length===0){
+    return{success:false,reason:'No eligible CSP in zone',ineligibleReasons};
+  }
+
+  // Stage 2: Quality Rank (categorical)
+  eligible.sort((a,b)=>{
+    const qa=getQualityRank(a.quality.composite);
+    const qb=getQualityRank(b.quality.composite);
+    if(qa!==qb)return qb-qa; // higher rank first
+
+    // Stage 3: Utilization (lower load ratio preferred)
+    const loadA=(a.connections.active+a.connections.pending)/SPR.P46;
+    const loadB=(b.connections.active+b.connections.pending)/SPR.P46;
+    if(Math.abs(loadA-loadB)>0.01)return loadA-loadB;
+
+    // Stage 4: Tiebreaker (earlier onboarding)
+    return a.onboardingDay-b.onboardingDay;
+  });
+
+  const selected=eligible[0];
+  return{
+    success:true,
+    csp:selected,
+    eligible:eligible.map(p=>p.id),
+    ineligibleReasons,
+    reasons:[
+      `Zone: ${zoneId}, ${eligible.length} eligible CSPs`,
+      `Selected: ${selected.id} (${selected.name})`,
+      `Quality: ${selected.quality.composite}, Load: ${((selected.connections.active+selected.connections.pending)/SPR.P46*100).toFixed(0)}%`,
+      `Routing: Quality rank → Utilization → Onboarding date`,
+      'Rule: D&A_OS §4.3, hierarchical routing'
+    ],
+  };
+}
+
+// ============================================================
+// SECTION 11: CONNECTION LIFECYCLE ENGINE
+// ============================================================
+function processNewRequests(){
+  ZONES.forEach(zone=>{
+    // Generate demand (baseDemand ± random)
+    let demand=zone.baseDemand+randInt(-1,2);
+    if(demand<0)demand=0;
+
+    // Check for demand spike injection
+    const spike=S.injections.find(inj=>inj.type==='demand_spike'&&inj.zoneId===zone.id&&inj.endDay>=S.day);
+    if(spike)demand+=spike.extraDemand;
+
+    for(let i=0;i<demand;i++){
+      const connId='CONN-'+String(nextConnId++).padStart(5,'0');
+      const result=routeConnection(zone.id);
+
+      if(!result.success){
+        emit('CONN_EXPIRED','routing',null,
+          `Connection ${connId} in ${zone.name}: NO ELIGIBLE CSP`,
+          ['All CSPs in zone are either at capacity, ineligible, or none exist',
+           ...Object.entries(result.ineligibleReasons).map(([id,r])=>`${id}: ${r}`),
+           'Rule: D&A_OS §4.3, routing failure']
+        );
+        S.connectionFlows.push({day:S.day,connId,zoneId:zone.id,type:'expired',cspId:null});
+        continue;
+      }
+
+      const csp=result.csp;
+      csp.stats.offered++;
+
+      // CSP accept/decline (based on probability + enforcement state)
+      let acceptProb=csp.acceptProb;
+      // Check if CSP has injection to reject all
+      const rejectInj=S.injections.find(inj=>inj.type==='reject'&&inj.cspId===csp.id&&inj.endDay>=S.day);
+      if(rejectInj)acceptProb=0.05; // almost always reject
+
+      const accepts=rng()<acceptProb;
+
+      if(accepts){
+        const conn={
+          id:connId,zoneId:zone.id,cspId:csp.id,state:'PENDING_INSTALL',
+          createdDay:S.day,assignedDay:S.day,acceptedDay:S.day,activatedDay:null,
+          lastRechargeDay:null,nextRechargeDay:null,pausedDay:null,retryCount:0,
+          declinedBy:[],installDay:S.day+randInt(1,SPR.P74),
+        };
+        S.connections.push(conn);
+        csp.connections.pending++;
+        csp.stats.accepted++;
+
+        emit('CONN_ACCEPTED','routing',csp.id,
+          `${connId} → ${csp.name} (${zone.name}) — Accepted`,
+          result.reasons.concat(['CSP accepted assignment']),
+          {connId,zoneId:zone.id}
+        );
+        S.connectionFlows.push({day:S.day,connId,zoneId:zone.id,type:'accepted',cspId:csp.id,cspName:csp.name});
+      }else{
+        csp.stats.declined++;
+        // Decline: try next eligible CSP
+        const retryResult=routeConnection(zone.id);
+        if(retryResult.success&&retryResult.csp.id!==csp.id){
+          const csp2=retryResult.csp;
+          csp2.stats.offered++;
+          if(rng()<csp2.acceptProb){
+            const conn={
+              id:connId,zoneId:zone.id,cspId:csp2.id,state:'PENDING_INSTALL',
+              createdDay:S.day,assignedDay:S.day,acceptedDay:S.day,activatedDay:null,
+              lastRechargeDay:null,nextRechargeDay:null,pausedDay:null,retryCount:1,
+              declinedBy:[csp.id],installDay:S.day+randInt(1,SPR.P74),
+            };
+            S.connections.push(conn);
+            csp2.connections.pending++;
+            csp2.stats.accepted++;
+            emit('CONN_REROUTED','routing',csp2.id,
+              `${connId}: ${csp.name} declined → rerouted to ${csp2.name}`,
+              [`${csp.name} declined (acceptance prob: ${(csp.acceptProb*100).toFixed(0)}%)`,
+               `Rerouted to ${csp2.name}`,
+               'Rule: D&A_OS §4.1, DECLINED → immediate re-entry'],
+              {connId,zoneId:zone.id}
+            );
+            S.connectionFlows.push({day:S.day,connId,zoneId:zone.id,type:'declined',cspId:csp.id,cspName:csp.name,rerouted:csp2.name});
+          }else{
+            csp2.stats.declined++;
+            S.connectionFlows.push({day:S.day,connId,zoneId:zone.id,type:'expired',cspId:null,reason:`${csp.name} and ${csp2.name} both declined`});
+          }
+        }else{
+          emit('CONN_DECLINED_EXPIRED','routing',csp.id,
+            `${connId}: ${csp.name} declined, no alternative CSP`,
+            [`${csp.name} declined. No other eligible CSP in zone.`],{connId}
+          );
+          S.connectionFlows.push({day:S.day,connId,zoneId:zone.id,type:'expired',cspId:null,reason:`${csp.name} declined, no alternative`});
+        }
+      }
+    }
+  });
+}
+
+function processConnectionLifecycle(){
+  // Track per-partner lifecycle summary for events
+  const lcSum={};// partnerId → {recharged,paused,returned,churned,installed}
+  const lc=(pid,key)=>{if(!lcSum[pid])lcSum[pid]={recharged:0,paused:0,returned:0,churned:0,installed:0};lcSum[pid][key]++};
+
+  S.connections.forEach(conn=>{
+    if(conn.state==='PENDING_INSTALL'){
+      // Check if install day reached
+      if(S.day>=conn.installDay){
+        const csp=S.partners.find(p=>p.id===conn.cspId);
+        if(!csp)return;
+        // Install success based on CSP's IQ
+        const success=rng()<(csp.baseIQ/100);
+        csp.stats.installsThisWindow++;
+        if(success){
+          conn.state='ACTIVE';
+          conn.activatedDay=S.day;
+          conn.lastRechargeDay=S.day;
+          conn.nextRechargeDay=S.day+SPR.RECHARGE_CYCLE;
+          csp.connections.pending--;
+          csp.connections.active++;
+          csp.stats.installed++;
+          csp.stats.installSuccessThisWindow++;
+          lc(csp.id,'installed');
+        }else{
+          // Failed install — retry
+          conn.retryCount++;
+          if(conn.retryCount>=SPR.P78){
+            conn.state='DEACTIVATED';
+            csp.connections.pending--;
+            emit('CONN_INSTALL_FAILED','lifecycle',csp.id,
+              `${conn.id}: Install failed ${SPR.P78} times → DEACTIVATED`,
+              [`Max retries P78(${SPR.P78}) reached`,'Rule: CL_OS §T3']
+            );
+          }else{
+            conn.installDay=S.day+randInt(1,SPR.P74);
+          }
+        }
+      }
+    }
+
+    if(conn.state==='ACTIVE'){
+      // Check recharge
+      if(S.day>=conn.nextRechargeDay){
+        // Customer recharges with some probability
+        if(rng()<0.85){
+          conn.lastRechargeDay=S.day;
+          conn.nextRechargeDay=S.day+SPR.RECHARGE_CYCLE+randInt(-3,5);
+          // Compensation: payout to CSP
+          const csp=S.partners.find(p=>p.id===conn.cspId);
+          if(csp&&!csp.wallet.frozen){
+            csp.wallet.balance+=SPR.RC01;
+            csp.compensation.baseThisPeriod+=SPR.RC01;
+            csp.compensation.totalEarned+=SPR.RC01;
+          }
+          lc(conn.cspId,'recharged');
+        }else{
+          // Customer didn't recharge → pause
+          conn.state='PAUSED';
+          conn.pausedDay=S.day;
+          const csp=S.partners.find(p=>p.id===conn.cspId);
+          if(csp)csp.connections.active--;
+          lc(conn.cspId,'paused');
+        }
+      }
+    }
+
+    if(conn.state==='PAUSED'){
+      // Check if customer comes back (decreasing probability over time)
+      const daysPaused=S.day-conn.pausedDay;
+      if(daysPaused>0&&daysPaused%7===0&&rng()<0.3){
+        // Customer recharges
+        conn.state='ACTIVE';
+        conn.lastRechargeDay=S.day;
+        conn.nextRechargeDay=S.day+SPR.RECHARGE_CYCLE;
+        conn.pausedDay=null;
+        const csp=S.partners.find(p=>p.id===conn.cspId);
+        if(csp){
+          csp.connections.active++;
+          if(!csp.wallet.frozen){
+            csp.wallet.balance+=SPR.RC01;
+            csp.compensation.baseThisPeriod+=SPR.RC01;
+            csp.compensation.totalEarned+=SPR.RC01;
+          }
+        }
+        lc(conn.cspId,'returned');
+      }
+      // Check P76 max pause
+      if(S.day-conn.pausedDay>=SPR.P76){
+        conn.state='DEACTIVATED';
+        lc(conn.cspId,'churned');
+      }
+    }
+  });
+
+  // Emit per-partner lifecycle summary events (only when something happened)
+  for(const[pid,s]of Object.entries(lcSum)){
+    const p=S.partners.find(x=>x.id===pid);
+    if(!p)continue;
+    const parts=[];
+    if(s.recharged)parts.push(`${s.recharged} renewed`);
+    if(s.paused)parts.push(`${s.paused} paused`);
+    if(s.returned)parts.push(`${s.returned} returned`);
+    if(s.churned)parts.push(`${s.churned} churned`);
+    if(s.installed)parts.push(`${s.installed} installed`);
+    if(parts.length){
+      emit('CONN_LIFECYCLE','lifecycle',pid,
+        `${p.name}: ${parts.join(', ')}`,
+        [`Active: ${p.connections.active}`,`Rule: CL_OS §T1-T4`]
+      );
+    }
+  }
+}
+
+// ============================================================
+// SECTION 12: COMPENSATION ENGINE
+// ============================================================
+function calculateBonusTier(partner){
+  if(partner.enforcement.perfState==='RESTRICTED'||partner.enforcement.perfState==='PRE_EXIT')return'NONE';
+  if(partner.wallet.frozen)return'NONE';
+  const q=partner.quality.composite;
+  if(q==='NON_COMPLIANT'||q==='PENDING')return'NONE';
+  if(q==='AT_RISK'||q==='RECOVERY')return'GOOD';
+  if(q==='COMPLIANT'){
+    if(partner.exposure.compliantCycles>=6)return'EXCELLENT';
+    if(partner.exposure.compliantCycles>=3)return'VERY_GOOD';
+    return'GOOD';
+  }
+  return'NONE';
+}
+
+function processCompensation(){
+  // Runs twice per week (every 3-4 days)
+  if(S.day%4!==0)return;
+
+  S.partners.forEach(p=>{
+    const prevTier=p.compensation.bonusTier;
+    p.compensation.bonusTier=calculateBonusTier(p);
+
+    // Calculate bonus for this period
+    let bonusPerRecharge=0;
+    switch(p.compensation.bonusTier){
+      case'GOOD':bonusPerRecharge=SPR.BONUS_GOOD;break;
+      case'VERY_GOOD':bonusPerRecharge=SPR.BONUS_VG;break;
+      case'EXCELLENT':bonusPerRecharge=SPR.BONUS_EX;break;
+    }
+
+    // Count recharges this period (simplified: active connections / recharge cycle * period)
+    const rechargesThisPeriod=Math.floor(p.connections.active*4/SPR.RECHARGE_CYCLE);
+    const bonus=rechargesThisPeriod*bonusPerRecharge;
+
+    if(bonus>0&&!p.wallet.frozen){
+      p.wallet.balance+=bonus;
+      p.compensation.bonusThisPeriod=bonus;
+      p.compensation.totalEarned+=bonus;
+    }
+
+    if(prevTier!==p.compensation.bonusTier&&p.quality.composite!=='PENDING'){
+      emit('COMP_BONUS_CHANGE','compensation',p.id,
+        `${p.name}: Bonus tier ${prevTier} → ${p.compensation.bonusTier}`,
+        [`Quality: ${p.quality.composite}, Enforcement: ${p.enforcement.perfState}`,
+         `Compliant cycles: ${p.exposure.compliantCycles}`,
+         `Rule: Compensation_OS, bonus tier based on quality composite + enforcement posture`]
+      );
+    }
+  });
+}
+
+// ============================================================
+// SECTION 13: EXPOSURE BAND UPDATE
+// ============================================================
+function updateExposureBands(){
+  S.partners.forEach(p=>{
+    const prevBand=p.exposure.band;
+
+    // Track cycles
+    if(p.quality.composite==='COMPLIANT'){
+      p.exposure.compliantCycles++;
+      p.exposure.recoveryCycles=0;
+    }else if(p.quality.composite==='RECOVERY'){
+      p.exposure.recoveryCycles++;
+    }else{
+      p.exposure.compliantCycles=0;
+    }
+    p.exposure.rampCycles++;
+
+    const newBand=getExposureBand(p);
+    p.exposure.band=newBand;
+
+    if(newBand!==prevBand){
+      emit('EXPOSURE_CHANGE','routing',p.id,
+        `${p.name}: Exposure ${prevBand} → ${newBand}`,
+        [`Quality: ${p.quality.composite}, Compliant cycles: ${p.exposure.compliantCycles}`,
+         `Ramp cycles: ${p.exposure.rampCycles}/${SPR.P45}`,
+         newBand==='INELIGIBLE_QUALITY'?'NON_COMPLIANT → zero new allocation':'',
+         `Rule: D&A_OS §4.2, exposure state re-evaluation`].filter(Boolean)
+      );
+    }
+  });
+}
+
+// ============================================================
+// SECTION 14: CONCENTRATION PROTECTION (INV-DAO-16)
+// ============================================================
+function checkConcentration(){
+  ZONES.forEach(zone=>{
+    const zoneCsps=S.partners.filter(p=>p.zoneId===zone.id);
+    const totalActive=zoneCsps.reduce((s,p)=>s+p.connections.active,0);
+    if(totalActive===0)return;
+
+    zoneCsps.forEach(p=>{
+      const share=(p.connections.active/totalActive)*100;
+      const multiplier=zone.classification==='ZC-A'?SPR.P59_A:zone.classification==='ZC-B'?SPR.P59_B:SPR.P59_C;
+
+      if(share>=SPR.P56){
+        p.exposure.concentrationCycles++;
+        const tier1=Math.ceil(SPR.P58*multiplier);
+        const tier2=Math.ceil(2*SPR.P58*multiplier);
+        const tier3=Math.ceil(3*SPR.P58*multiplier);
+
+        if(p.exposure.concentrationCycles>=tier3&&p.exposure.band!=='ELIGIBLE_CAPPED'){
+          p.exposure.band='ELIGIBLE_CAPPED';
+          emit('CONCENTRATION_TIER3','concentration',p.id,
+            `${p.name}: ELIGIBLE_CAPPED in ${zone.name} (${share.toFixed(0)}% share)`,
+            [`Zone share ${share.toFixed(1)}% >= P56(${SPR.P56}%) for ${p.exposure.concentrationCycles} cycles`,
+             `Tier 3 threshold: ${tier3} cycles (P58×P59×3 = ${SPR.P58}×${multiplier}×3)`,
+             'Auto-cap applied: zero new allocation in this zone',
+             'Rule: D&A_OS §4.2, INV-DAO-16 Tier 3']
+          );
+        }else if(p.exposure.concentrationCycles>=tier2&&p.exposure.concentrationCycles<tier3){
+          emit('CONCENTRATION_TIER2','concentration',p.id,
+            `${p.name}: Concentration CRITICAL in ${zone.name} (${share.toFixed(0)}%)`,
+            [`Tier 2: binding escalation. Capacity OS must respond.`,'Rule: INV-DAO-16']
+          );
+        }else if(p.exposure.concentrationCycles===tier1){
+          emit('CONCENTRATION_TIER1','concentration',p.id,
+            `${p.name}: Concentration ADVISORY in ${zone.name} (${share.toFixed(0)}%)`,
+            [`Tier 1: advisory signal to Capacity OS`,'Rule: INV-DAO-16']
+          );
+        }
+      }else{
+        p.exposure.concentrationCycles=0;
+        // Lift cap if below threshold
+        if(p.exposure.band==='ELIGIBLE_CAPPED'){
+          p.exposure.band=getExposureBand(p);
+        }
+      }
+    });
+  });
+}
+
+// ============================================================
+// SECTION 15: P15 DELAYED CONSEQUENCES
+// ============================================================
+function processP15Queue(){
+  const due=S.pendingP15.filter(item=>S.day>=item.triggerDay);
+  due.forEach(item=>{
+    // Remove from queue
+    S.pendingP15=S.pendingP15.filter(i=>i!==item);
+    // The consequence has already been handled by enforcement tracking
+    // P15 mainly affects the timing of dashboard updates vs consequence triggers
+    // In our simulation, we process enforcement after quality eval
+    // The P15 delay is modeled in the enforcement window counting
+  });
+}
+
+// ============================================================
+// SECTION 16: SIMULATION LOOP
+// ============================================================
+function saveSnapshot(){
+  // Deep clone S for step-back (exclude non-serializable props)
+  const snap=JSON.parse(JSON.stringify(S,(_,v)=>typeof v==='number'&&!isFinite(v)?null:v));
+  stateHistory.push(snap);
+  if(stateHistory.length>30)stateHistory.shift();
+  const bb=document.getElementById('back-btn');
+  if(bb)bb.style.opacity='1';
+}
+
+function simStepBack(){
+  simPause();
+  if(stateHistory.length===0)return;
+  const snap=stateHistory.pop();
+  S=snap;
+  S.timer=null;
+  S.running=false;
+  render();
+  // Update back button opacity
+  const bb=document.getElementById('back-btn');
+  if(bb)bb.style.opacity=stateHistory.length>0?'1':'.4';
+}
+
+function simulateDay(){
+  if(S.day>=SPR.SIM_DAYS){
+    simPause();
+    document.getElementById('sim-status').textContent='Simulation Complete';
+    return;
+  }
+  // Save snapshot for step-back before mutating
+  saveSnapshot();
+  S.day++;
+  S.connectionFlows=[];
+
+  // 1. Process pending P15 consequences
+  processP15Queue();
+
+  // 2. Generate and route new connection requests
+  processNewRequests();
+
+  // 3. Process connection lifecycle (installs, recharges, pauses)
+  processConnectionLifecycle();
+
+  // 4. Quality evaluation (every P01 days)
+  if(S.day%SPR.P01===0){
+    S.qualityWindow++;
+    S.partners.forEach(p=>{
+      if(p.enforcement.fpvState!=='TERMINATED'){
+        qualityEvaluatePartner(p);
+      }
+    });
+
+    // 5. Enforcement evaluation (reads quality, same cycle)
+    S.partners.forEach(p=>{
+      if(p.enforcement.fpvState!=='TERMINATED'){
+        enforcementPerformanceTrack(p);
+      }
+    });
+
+    // 6. Update exposure bands
+    updateExposureBands();
+
+    // 7. Check concentration
+    checkConcentration();
+  }
+
+  // 8. FPV tick (daily — investigation timers)
+  S.partners.forEach(p=>enforcementFPVTick(p));
+
+  // 9. Compensation (every 4 days ≈ twice weekly)
+  processCompensation();
+
+  // 10. Process injections that expire
+  S.injections=S.injections.filter(inj=>!inj.endDay||inj.endDay>=S.day);
+
+  // 11. Generate narrative and timeline
+  generateNarrative();
+
+  // Render
+  render();
+}
+
+function simStep(){simPause();simulateDay()}
+function simPlay(){
+  if(S.running)return;
+  S.running=true;
+  S.timer=setInterval(simulateDay,S.speed);
+  document.getElementById('play-btn').textContent='Pause ⏸';
+  document.getElementById('sim-status').textContent='Running';
+}
+function simPause(){
+  S.running=false;
+  if(S.timer)clearInterval(S.timer);
+  S.timer=null;
+  document.getElementById('play-btn').textContent='Play ▶';
+  document.getElementById('sim-status').textContent='Paused';
+}
+function simToggle(){S.running?simPause():simPlay()}
+function setSpeed(ms,btn){
+  S.speed=ms;
+  const wasRunning=S.running;
+  simPause();
+  document.querySelectorAll('#controls button[data-speed]').forEach(b=>b.classList.remove('active-speed'));
+  btn.classList.add('active-speed');
+  if(wasRunning)simPlay();
+}
+
+// ============================================================
+// SECTION 17: INJECTION SYSTEM
+// ============================================================
+function injectScenario(type){
+  const cspId=document.getElementById('inj-target').value;
+  const zoneId=document.getElementById('inj-zone-target').value;
+  const csp=S.partners.find(p=>p.id===cspId);
+
+  switch(type){
+    case'reject':{
+      if(!csp){alert('Select a target CSP');return}
+      S.injections.push({type:'reject',cspId:csp.id,endDay:S.day+21});
+      emit('INJECTION','injection',csp.id,
+        `INJECTED: ${csp.name} will reject all connections for 21 days`,
+        ['Manual injection: CSP refuses all incoming requests',
+         'Expected: utilization drops → exposure band drops → fewer offers',
+         'System self-corrects without manual intervention']
+      );
+      break;
+    }
+    case'disintermediation':{
+      if(!csp){alert('Select a target CSP');return}
+      enforcementFPVTrack(csp,'DISINTERMEDIATION','SERIOUS');
+      emit('INJECTION','injection',csp.id,
+        `INJECTED: Disintermediation detected for ${csp.name}`,
+        ['Manual injection: CSP bypassing Wiom to serve customers directly',
+         'FPV track activated immediately (P15 bypassed)',
+         'Financial hold applied, investigation started']
+      );
+      break;
+    }
+    case'fraud':{
+      if(!csp){alert('Select a target CSP');return}
+      enforcementFPVTrack(csp,'FRAUD','CRITICAL');
+      emit('INJECTION','injection',csp.id,
+        `INJECTED: Fraud detected for ${csp.name}`,
+        ['Manual injection: Billing manipulation / fake installations',
+         'Severity: CRITICAL → immediate suspension path',
+         'FPV track: CRITICAL severity leads to termination']
+      );
+      break;
+    }
+    case'power_outage':{
+      if(!zoneId){alert('Select a target zone');return}
+      const zone=ZONES.find(z=>z.id===zoneId);
+      // Reduce uptime for all CSPs in zone
+      S.partners.filter(p=>p.zoneId===zoneId).forEach(p=>{
+        p.baseUptime=Math.max(50,p.baseUptime-15);
+      });
+      S.injections.push({type:'power_outage',zoneId,endDay:S.day+7,originalUptimes:{}});
+      emit('INJECTION','injection',null,
+        `INJECTED: Power outage in ${zone.name} for 7 days`,
+        ['All CSPs in zone: uptime reduced by ~15%',
+         'Expected: multiple CSPs hit AT_RISK/NON_COMPLIANT simultaneously',
+         'Tests zone-wide stress scenario']
+      );
+      break;
+    }
+    case'demand_spike':{
+      if(!zoneId){alert('Select a target zone');return}
+      const zone2=ZONES.find(z=>z.id===zoneId);
+      S.injections.push({type:'demand_spike',zoneId,endDay:S.day+14,extraDemand:8});
+      emit('INJECTION','injection',null,
+        `INJECTED: Demand spike in ${zone2.name} (+8/day for 14 days)`,
+        ['Connection requests surge in zone',
+         'Tests capacity limits and routing under pressure',
+         'Expect some requests to expire if capacity insufficient']
+      );
+      break;
+    }
+    case'csp_improves':{
+      if(!csp){alert('Select a target CSP');return}
+      csp.baseUptime=Math.min(98,csp.baseUptime+8);
+      csp.baseResolution=Math.max(2,csp.baseResolution-2);
+      emit('INJECTION','injection',csp.id,
+        `INJECTED: ${csp.name} improves (bought battery backup + training)`,
+        ['Base uptime improved by +8%','Resolution time improved by -2h',
+         'Expected: quality improves over next few evaluation windows',
+         'If currently restricted, should auto-clear on reaching COMPLIANT']
+      );
+      break;
+    }
+  }
+  renderInjectionLog();
+}
+
+// ============================================================
+// SECTION 18: UI RENDERING
+// ============================================================
+function switchView(view){
+  S.activeView=view;
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+  document.getElementById(view+'-view').classList.add('active');
+  const viewLabels={reference:'start here',system:'system',partner:'partner dashboard',dossier:'internal dossier',ops:'ops',impact:'impact',timeline:'timeline',params:'parameters'};
+  document.querySelectorAll('nav button').forEach(b=>{
+    const txt=b.textContent.toLowerCase();
+    if(txt===viewLabels[view])b.classList.add('active');
+  });
+  render();
+}
+
+// OS category → display name + CSS class
+function osLabel(category){
+  const map={
+    quality:{name:'Quality OS',cls:'os-quality'},
+    enforcement:{name:'Enforcement OS',cls:'os-enforcement'},
+    routing:{name:'D&A OS',cls:'os-routing'},
+    compensation:{name:'Compensation OS',cls:'os-compensation'},
+    fpv:{name:'FPV Track',cls:'os-fpv'},
+    lifecycle:{name:'Lifecycle OS',cls:'os-lifecycle'},
+    concentration:{name:'Concentration',cls:'os-concentration'},
+    injection:{name:'Injection',cls:'os-injection'},
+  };
+  return map[category]||{name:category,cls:'os-lifecycle'};
+}
+
+function render(){
+  document.getElementById('day-display').textContent=`Day ${S.day} / ${SPR.SIM_DAYS}`;
+  const nextEval=Math.ceil(S.day/SPR.P01)*SPR.P01;
+  document.getElementById('eval-info').textContent=`Next eval: Day ${nextEval} | Window: ${S.qualityWindow}`;
+
+  switch(S.activeView){
+    case'system':renderSystemView();break;
+    case'partner':renderPartnerView();break;
+    case'dossier':renderDossierView();break;
+    case'ops':renderOpsView();break;
+    case'impact':renderImpactView();break;
+    case'timeline':renderTimelineView();break;
+    case'reference':renderReferenceView();break;
+    case'params':renderParamsView();break;
+  }
+}
+
+function renderSystemView(){
+  renderNarrativeBar();
+  renderZoneMap();
+  renderCounters();
+  renderEventLog();
+}
+
+function renderNarrativeBar(){
+  const el=document.getElementById('narrative-bar');
+  if(!el)return;
+  if(S.day===0){
+    const zn=S.focusZone?ZONES.find(z=>z.id===S.focusZone):null;
+    el.innerHTML=`<div class="nar-header"><span class="nar-day">Ready</span><span class="nar-eval-tag normal-day">Paused</span></div><div class="nar-text">Welcome to the Wiom System Simulation. This uses <b>real Bharat partner data</b> — ${S.partners.length} actual partners across 6 zones. Most start as <b>At Risk</b> because no quality evaluation has run yet (the system hasn\'t scored them). Click <b>Step ▶</b> to advance one day at a time. On <b>Day ${SPR.P01}</b>, the first Quality OS evaluation will run and you\'ll see partners classified.${zn?' Showing <b>'+zn.name+'</b> zone ('+zn.partnerCount+' partners). Use the zone toggle above to show all zones.':''}</div>`;
+    return;
+  }
+  const isEvalDay=S.day%SPR.P01===0;
+  const nextEval=Math.ceil((S.day+1)/SPR.P01)*SPR.P01;
+  const daysUntilEval=nextEval-S.day;
+  const evalTag=isEvalDay?'<span class="nar-eval-tag eval-day">⚡ EVALUATION DAY — Quality OS is running</span>':`<span class="nar-eval-tag normal-day">Routine day — next eval in ${daysUntilEval}d</span>`;
+
+  // Store current narrative in history (avoid duplicates for same day)
+  const narText=S.narrative||'Processing...';
+  if(S.narrativeHistory.length===0||S.narrativeHistory[S.narrativeHistory.length-1].day!==S.day){
+    S.narrativeHistory.push({day:S.day,text:narText,eval:isEvalDay});
+    if(S.narrativeHistory.length>10)S.narrativeHistory.shift();
+  }
+
+  // Show last 2 previous days
+  const prev=S.narrativeHistory.slice(-3,-1).reverse();
+  const histHtml=prev.length?`<div class="nar-history">${prev.map(h=>
+    `<div class="nar-prev"><b>Day ${h.day}</b>${h.eval?' ⚡':''}: ${h.text}</div>`
+  ).join('')}</div>`:'';
+
+  el.innerHTML=`<div class="nar-header"><span class="nar-day">Day ${S.day}</span>${evalTag}</div><div class="nar-text">${narText}</div>${histHtml}`;
+}
+
+function toggleEvCollapse(){
+  const el=document.getElementById('sv-right');
+  el.classList.toggle('collapsed');
+  const btn=document.getElementById('ev-collapse-btn');
+  btn.textContent=el.classList.contains('collapsed')?'◀':'▶';
+}
+
+function toggleFocusZone(){
+  if(S.focusZone){
+    S.focusZone=null; // show all
+  } else {
+    S.focusZone='Z04'; // back to Lucknow
+  }
+  renderZoneMap();
+  renderNarrativeBar();
+  renderCounters();
+  renderInjectionBar();
+}
+
+function renderZoneMap(){
+  const el=document.getElementById('zone-map');
+  const visibleZones=S.focusZone?ZONES.filter(z=>z.id===S.focusZone):ZONES;
+  const focusZoneName=S.focusZone?ZONES.find(z=>z.id===S.focusZone)?.name:'';
+
+  let toggleHtml=`<div style="padding:6px 10px;display:flex;align-items:center;gap:8px">
+    <button onclick="toggleFocusZone()" style="padding:3px 10px;border:1px solid #d1d5db;border-radius:4px;background:${S.focusZone?'#fff':'#d92b90'};color:${S.focusZone?'#374151':'#fff'};cursor:pointer;font-size:11px;font-weight:600">${S.focusZone?'Show All 6 Zones':'Showing All Zones'}</button>
+    ${S.focusZone?`<span style="font-size:11px;color:#6b7280">Focused on <b>${focusZoneName}</b> (${visibleZones[0]?.partnerCount||''} partners) — easier to follow individual dots</span>`
+    :`<button onclick="S.focusZone='Z04';renderZoneMap();renderNarrativeBar()" style="padding:3px 10px;border:1px solid #d1d5db;border-radius:4px;background:#fff;color:#374151;cursor:pointer;font-size:11px">Focus: Lucknow</button>`}
+  </div>`;
+
+  let html=toggleHtml;
+  visibleZones.forEach(zone=>{
+    const csps=S.partners.filter(p=>p.zoneId===zone.id);
+    const totalActive=csps.reduce((s,p)=>s+p.connections.active,0);
+    const compliant=csps.filter(p=>p.quality.composite==='COMPLIANT').length;
+    const atRisk=csps.filter(p=>['AT_RISK','RECOVERY'].includes(p.quality.composite)).length;
+    const nc=csps.filter(p=>p.quality.composite==='NON_COMPLIANT').length;
+    const pending=csps.filter(p=>p.quality.composite==='PENDING').length;
+
+    // Recent flows in this zone
+    const flows=S.connectionFlows.filter(f=>f.zoneId===zone.id).slice(-3);
+    let flowHtml='';
+    flows.forEach(f=>{
+      if(f.type==='accepted')flowHtml+=`<div class="flow-item assigned">→ ${f.connId} → ${f.cspName} ✓</div>`;
+      else if(f.type==='declined')flowHtml+=`<div class="flow-item declined">→ ${f.cspName} ✗ → ${f.rerouted||'expired'}</div>`;
+      else if(f.type==='expired')flowHtml+=`<div class="flow-item expired">→ ${f.connId} expired</div>`;
+    });
+
+    // When focused on single zone, show partner names next to dots
+    const dotsHtml=S.focusZone?csps.map(p=>{
+      const dot=renderCspDot(p);
+      return`<div style="display:inline-flex;align-items:center;gap:3px;margin:2px 0">${dot}<span style="font-size:10px;color:#6b7280;white-space:nowrap" title="${p.id}">${p.name.split(' ').slice(0,2).join(' ')}</span></div>`;
+    }).join(' '):`<div class="zone-dots">${csps.map(p=>renderCspDot(p)).join('')}</div>`;
+
+    html+=`<div class="zone-card">
+      <div class="zone-header">
+        <span class="zone-name">${zone.name}</span>
+        <span class="zone-class">${zone.classification}</span>
+      </div>
+      <div class="zone-stats">
+        <span style="color:#059669">●${compliant}</span>
+        <span style="color:#d97706">●${atRisk}</span>
+        <span style="color:#dc2626">●${nc}</span>
+        ${pending?`<span style="color:#9ca3af">●${pending}</span>`:''}
+        <span style="color:#6b7280">| ${totalActive} conns</span>
+      </div>
+      ${dotsHtml}
+      ${flowHtml}
+    </div>`;
+  });
+  el.innerHTML=html;
+}
+
+function renderCspDot(p){
+  let qClass='q-pending';
+  if(p.quality.composite==='COMPLIANT')qClass='q-compliant';
+  else if(p.quality.composite==='AT_RISK')qClass='q-at-risk';
+  else if(p.quality.composite==='NON_COMPLIANT')qClass='q-non-compliant';
+  else if(p.quality.composite==='RECOVERY')qClass='q-recovery';
+
+  let eClass='';
+  if(p.enforcement.perfState==='RESTRICTED')eClass='e-restricted';
+  else if(p.enforcement.perfState==='PRE_EXIT')eClass='e-pre-exit';
+  if(p.enforcement.fpvState==='SUSPENDED')eClass='e-suspended';
+  if(p.enforcement.fpvState==='TERMINATED')eClass='e-terminated';
+
+  const label=p.id.replace('CSP-','');
+  return`<div class="csp-dot ${qClass} ${eClass}" data-id="${p.id}"
+    onmouseenter="showTooltip(event,'${p.id}')" onmouseleave="hideTooltip()"
+    onclick="selectPartner('${p.id}')"
+    title="${p.name}">${label}</div>`;
+}
+
+function showTooltip(evt,id){
+  const p=S.partners.find(x=>x.id===id);if(!p)return;
+  const tt=document.getElementById('tooltip');
+  const zone=ZONES.find(z=>z.id===p.zoneId);
+  tt.innerHTML=`<b>${p.name}</b> (${p.id})<br>
+    ${p.city?p.city+' · ':''}${zone.name} (${zone.classification})<br>
+    Quality: <b>${p.quality.composite}</b> | SS:${p.quality.ss.value.toFixed(1)}% SR:${p.quality.sr.value.toFixed(1)}h<br>
+    Enforcement: <b>${p.enforcement.perfState}</b>${p.enforcement.fpvState!=='FPV_CLEAR'?' | FPV: '+p.enforcement.fpvState:''}<br>
+    Exposure: ${p.exposure.band}<br>
+    Connections: ${p.connections.active} active, ${p.connections.pending} pending<br>
+    Wallet: ₹${p.wallet.balance.toLocaleString()}${p.wallet.frozen?' (FROZEN)':''}`;
+  tt.style.left=(evt.clientX+12)+'px';
+  tt.style.top=(evt.clientY-10)+'px';
+  tt.classList.add('show');
+}
+function hideTooltip(){document.getElementById('tooltip').classList.remove('show')}
+
+function selectPartner(id){
+  S.selectedPartnerId=id;
+  document.getElementById('inj-target').value=id;
+  switchView('partner');
+}
+
+function renderCounters(){
+  const ps=S.focusZone?S.partners.filter(p=>p.zoneId===S.focusZone):S.partners;
+  const scopeLabel=S.focusZone?ZONES.find(z=>z.id===S.focusZone)?.name||'Zone':'All Partners';
+  const comp=ps.filter(p=>p.quality.composite==='COMPLIANT').length;
+  const ar=ps.filter(p=>['AT_RISK','RECOVERY'].includes(p.quality.composite)).length;
+  const nc=ps.filter(p=>p.quality.composite==='NON_COMPLIANT').length;
+  const restricted=ps.filter(p=>p.enforcement.perfState==='RESTRICTED').length;
+  const preExit=ps.filter(p=>p.enforcement.perfState==='PRE_EXIT').length;
+  const suspended=ps.filter(p=>p.enforcement.fpvState==='SUSPENDED').length;
+  const terminated=ps.filter(p=>p.enforcement.fpvState==='TERMINATED').length;
+  const totalActive=ps.reduce((s,p)=>s+p.connections.active,0);
+  const zoneIds=S.focusZone?new Set([S.focusZone]):null;
+  const todayAccepted=S.connectionFlows.filter(f=>f.type==='accepted'&&(!zoneIds||zoneIds.has(f.zoneId))).length;
+  const todayExpired=S.connectionFlows.filter(f=>f.type==='expired'&&(!zoneIds||zoneIds.has(f.zoneId))).length;
+
+  document.getElementById('sys-counters').innerHTML=`
+    <div class="counter-box" style="flex:0 0 auto;min-width:auto;background:#fdf2f8;border-color:#f9a8d4"><div class="val" style="font-size:11px;color:#d92b90">${scopeLabel}</div><div class="lbl">${ps.length} partners</div></div>
+    <div class="counter-box green"><div class="val">${comp}</div><div class="lbl">Compliant</div></div>
+    <div class="counter-box yellow"><div class="val">${ar}</div><div class="lbl">At Risk</div></div>
+    <div class="counter-box red"><div class="val">${nc}</div><div class="lbl">Non-Compliant</div></div>
+    <div class="counter-box"><div class="val" style="color:#f59e0b">${restricted}</div><div class="lbl">Restricted</div></div>
+    <div class="counter-box"><div class="val" style="color:#f97316">${preExit}</div><div class="lbl">Pre-Exit</div></div>
+    <div class="counter-box"><div class="val" style="color:#ef4444">${suspended+terminated}</div><div class="lbl">Suspended</div></div>
+    <div class="counter-box blue"><div class="val">${totalActive.toLocaleString()}</div><div class="lbl">Active Conns</div></div>
+    <div class="counter-box"><div class="val" style="color:#34d399">${todayAccepted}</div><div class="lbl">Today Routed</div></div>
+    <div class="counter-box gray"><div class="val">${todayExpired}</div><div class="lbl">Today Expired</div></div>
+  `;
+}
+
+function setEvFilter(filter,btn){
+  S.evFilter=filter;
+  document.querySelectorAll('#event-log-header .filters button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderEventLog();
+}
+
+function evToPlain(ev){
+  const p=ev.partnerId?S.partners.find(x=>x.id===ev.partnerId):null;
+  const name=p?p.name:ev.partnerId||'';
+  const map={
+    'QUAL_STATE_NON_COMPLIANT':`${name} failed quality standards — chronic poor performance confirmed.`,
+    'QUAL_STATE_AT_RISK':`${name} has quality issues — one or more metrics below threshold.`,
+    'QUAL_STATE_COMPLIANT':`${name} meets all quality standards — good performance.`,
+    'QUAL_STATE_RECOVERY':`${name} is improving — on the path back from non-compliant.`,
+    'ENF_PATTERN_WATCH':`System is now watching ${name} — first quality failure detected.`,
+    'ENF_RESTRICTED':`${name} restricted — persistent poor quality, routing reduced.`,
+    'ENF_PRE_EXIT':`${name} at final warning — exit proceedings may begin.`,
+    'ENF_CLEAR':`${name} cleared from enforcement — quality restored.`,
+    'FPV_FLAGGED':`${name} flagged for investigation — integrity violation detected.`,
+    'FPV_SUSPENDED':`${name} suspended — all routing stopped pending investigation.`,
+    'FPV_TERMINATED':`${name} terminated — partnership ended permanently.`,
+    'CONN_ACCEPTED':`New customer assigned to ${name} and accepted.`,
+    'CONN_EXPIRED':`Customer request expired — no partner available in zone.`,
+    'CONN_DECLINED_EXPIRED':`${name} declined, no alternative found — request expired.`,
+    'CONN_LIFECYCLE':`${name}: ${ev.desc.split(': ').slice(1).join(': ')||'lifecycle update'}.`,
+    'CONN_INSTALL_FAILED':`Customer install at ${name} failed permanently.`,
+    'EXPOSURE_CHANGE':`${name}'s routing access changed — ${ev.desc.includes('INELIGIBLE')?'now blocked from new customers':'exposure level adjusted'}.`,
+    'COMP_PAYOUT':`${name} earned ₹${ev.payload?.amount||''} from customer recharges.`,
+    'COMP_BONUS_CHANGE':`${name}'s bonus tier changed — ${ev.desc.split('→').pop()?.trim()||'updated'}.`,
+    'PARAM_CHANGE':`System parameter updated: ${ev.desc}`,
+    'PARAM_RESET':`All parameters reset to defaults.`,
+  };
+  return map[ev.type]||ev.desc;
+}
+
+function renderEventLog(){
+  const el=document.getElementById('event-list');
+  const toggle=document.getElementById('ev-mode-toggle');
+  if(toggle)toggle.textContent=S.evPlainMode?'Technical':'Plain English';
+  let evs=S.events.slice().reverse();
+  // Filter to focusZone partners if zone focus is active
+  if(S.focusZone){
+    const zonePartnerIds=new Set(S.partners.filter(p=>p.zoneId===S.focusZone).map(p=>p.id));
+    evs=evs.filter(e=>!e.partnerId||zonePartnerIds.has(e.partnerId));
+  }
+  if(S.evFilter!=='all')evs=evs.filter(e=>e.category===S.evFilter);
+  evs=evs.slice(0,200);
+
+  el.innerHTML=evs.map(ev=>{
+    const whyHtml=ev.why.length?`<div class="event-why" id="why-${ev.id}">${ev.why.map(w=>'→ '+w).join('<br>')}</div>`:'';
+    const os=osLabel(ev.category);
+    if(S.evPlainMode){
+      return`<div class="event-item ev-plain" onclick="toggleWhy(${ev.id})">
+        <span class="ev-time">D${ev.day}</span>
+        <span class="ev-os-badge ${os.cls}">${os.name}</span>
+        <span>${evToPlain(ev)}</span>
+        ${whyHtml}
+      </div>`;
+    }
+    return`<div class="event-item" onclick="toggleWhy(${ev.id})">
+      <span class="ev-time">D${ev.day}</span>
+      <span class="ev-os-badge ${os.cls}">${os.name}</span>
+      <span class="ev-type ${ev.category}">${ev.type}</span>
+      <span>${ev.desc}</span>
+      ${whyHtml}
+    </div>`;
+  }).join('');
+}
+
+function toggleEvMode(){S.evPlainMode=!S.evPlainMode;renderEventLog()}
+
+function toggleWhy(id){
+  const el=document.getElementById('why-'+id);
+  if(el)el.classList.toggle('show');
+}
+
+function renderInjectionLog(){
+  const el=document.getElementById('inj-log-main');
+  if(!el)return;
+  const injEvents=S.events.filter(e=>e.category==='injection').slice(-5).reverse();
+  el.innerHTML=injEvents.length?injEvents.map(e=>`<div class="inj-log-item">Day ${e.day}: ${e.desc}</div>`).join(''):'<span style="color:#9ca3af;font-size:10px">No scenarios injected yet</span>';
+}
+
+function renderInjectionBar(){
+  const el=document.getElementById('injection-bar');
+  if(!el)return;
+  // Filter partners to focus zone if active
+  const ps=S.focusZone?S.partners.filter(p=>p.zoneId===S.focusZone):S.partners;
+  const zs=S.focusZone?ZONES.filter(z=>z.id===S.focusZone):ZONES;
+
+  el.innerHTML=`<div class="inj-header"><h3>🎯 Try a Scenario</h3><span>Inject an event and watch the system respond</span></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px">
+      <select id="inj-target" style="padding:3px 6px;background:#fff;color:#1a1a2e;border:1px solid #d1d5db;border-radius:4px;font-size:11px;max-width:200px">${ps.map(p=>`<option value="${p.id}">${p.name}</option>`).join('')}</select>
+      <select id="inj-zone-target" style="padding:3px 6px;background:#fff;color:#1a1a2e;border:1px solid #d1d5db;border-radius:4px;font-size:11px">${zs.map(z=>`<option value="${z.id}">${z.name}</option>`).join('')}</select>
+      <div class="sep" style="width:1px;height:16px;background:#e2e8f0"></div>
+      <button class="inj-btn" onclick="injectScenario('reject')" title="Partner stops accepting new customers">CSP Rejects All</button>
+      <button class="inj-btn danger" onclick="injectScenario('disintermediation')" title="FPV track: flagged → suspended → terminated">Disintermediation</button>
+      <button class="inj-btn" onclick="injectScenario('power_outage')" title="Drops uptime for all zone partners">Power Outage</button>
+      <button class="inj-btn" onclick="injectScenario('demand_spike')" title="Surge in connection requests">Demand Spike</button>
+      <button class="inj-btn danger" onclick="injectScenario('fraud')" title="FPV escalates to suspension">Fraud Detected</button>
+      <button class="inj-btn" onclick="injectScenario('csp_improves')" title="Partner invests in quality improvement">CSP Improves</button>
+    </div>
+    <div id="inj-log-main" style="font-size:10px;color:#6b7280"></div>`;
+  renderInjectionLog();
+}
+
+// ============================================================
+// SECTION 19: PARTNER DASHBOARD (Visibility OS — what the CSP sees)
+// ============================================================
+function renderPartnerView(){
+  const el=document.getElementById('partner-view');
+  const p=S.partners.find(x=>x.id===S.selectedPartnerId)||S.partners[0];
+  if(!p){el.innerHTML='<p>No partner selected</p>';return}
+  S.selectedPartnerId=p.id;
+
+  const zone=ZONES.find(z=>z.id===p.zoneId);
+  const qc=p.quality.composite;
+  const qClass=qc==='COMPLIANT'?'compliant':qc==='AT_RISK'?'at-risk':qc==='NON_COMPLIANT'?'non-compliant':qc==='RECOVERY'?'recovery':'';
+  const ePerf=p.enforcement.perfState;
+  // Visibility OS: PATTERN_WATCH is HIDDEN from CSP — they see "Clear"
+  const visibleEnf=ePerf==='PATTERN_WATCH'||ePerf==='CLEAR'?'Clear':ePerf==='RESTRICTED'?'Restricted':ePerf==='PRE_EXIT'?'Action Required':'';
+  const visibleEnfClass=ePerf==='CLEAR'||ePerf==='PATTERN_WATCH'?'clear':ePerf==='RESTRICTED'?'restricted':'suspended';
+  // Visibility OS: quality composite shown but internal domain counters hidden
+  const visibleQuality=qc==='COMPLIANT'?'Good Standing':qc==='AT_RISK'?'Needs Improvement':qc==='NON_COMPLIANT'?'Below Standard':qc==='RECOVERY'?'Improving':'Pending';
+  const fpvVisible=p.enforcement.fpvState==='FPV_CLEAR'?null:p.enforcement.fpvState==='FPV_FLAGGED'?'Under Review':p.enforcement.fpvState==='SUSPENDED'?'Suspended':'Terminated';
+
+  el.innerHTML=`
+    <div class="pv-select">
+      <select id="pv-csp-select" onchange="S.selectedPartnerId=this.value;renderPartnerView()">
+        ${S.partners.map(pp=>`<option value="${pp.id}" ${pp.id===p.id?'selected':''}>${pp.name} — ${ZONES.find(z=>z.id===pp.zoneId).name}</option>`).join('')}
+      </select>
+    </div>
+    <div class="pd-notice">👁 <b>Visibility OS</b> — This is exactly what the partner sees on their dashboard. Internal system states (Pattern Watch, P17 counters, chronic timers) are hidden. For internal state, see <a href="#" onclick="switchView('dossier');return false" style="color:#d92b90">Internal Dossier</a>.</div>
+    <div class="pv-dashboard">
+      <div class="pv-card">
+        <h3>Your Performance</h3>
+        <div style="text-align:center;margin:8px 0"><span class="pv-status ${qClass}" style="font-size:14px">${visibleQuality}</span></div>
+        <div class="pv-metric"><span class="label">Uptime</span><span class="value ${p.quality.ss.value>=SPR.THRESH_SS?'good':'bad'}">${p.quality.ss.value.toFixed(1)}%</span></div>
+        <div class="pv-metric"><span class="label">Avg Resolution Time</span><span class="value ${p.quality.sr.value<=SPR.THRESH_SR?'good':'bad'}">${p.quality.sr.value.toFixed(1)} hours</span></div>
+        <div class="pv-metric"><span class="label">Install Success Rate</span><span class="value ${p.quality.iq.value>=SPR.THRESH_IQ?'good':'bad'}">${p.quality.iq.value.toFixed(1)}%</span></div>
+        ${qc==='NON_COMPLIANT'?'<div style="margin-top:8px;padding:6px;background:#fef2f2;border-radius:4px;font-size:11px;color:#dc2626">⚠ Your performance is below Wiom standards. Improve your metrics to restore full access to new customers.</div>':''}
+        ${qc==='RECOVERY'?'<div style="margin-top:8px;padding:6px;background:#f5f3ff;border-radius:4px;font-size:11px;color:#7c3aed">↗ Your performance is improving. Keep it up to restore full access.</div>':''}
+      </div>
+      <div class="pv-card">
+        <h3>Your Status</h3>
+        <div class="pv-metric"><span class="label">Account Status</span><span class="pv-status ${visibleEnfClass}">${visibleEnf}</span></div>
+        ${fpvVisible?`<div class="pv-metric"><span class="label">Compliance</span><span class="value bad">${fpvVisible}</span></div>`:''}
+        <div class="pv-metric"><span class="label">New Customer Access</span><span class="value ${p.exposure.band.includes('INELIGIBLE')?'bad':'good'}">${p.exposure.band.includes('INELIGIBLE')?'Paused':'Active'}</span></div>
+        ${ePerf==='RESTRICTED'?'<div style="margin-top:8px;padding:6px;background:#fffbeb;border-radius:4px;font-size:11px;color:#92400e">⚠ Your access to new customers is restricted due to ongoing quality issues. Improve metrics to lift restriction.</div>':''}
+        ${ePerf==='PRE_EXIT'?'<div style="margin-top:8px;padding:6px;background:#fef2f2;border-radius:4px;font-size:11px;color:#dc2626">🚨 <b>Action Required:</b> Your partnership is at risk. Immediate quality improvement needed or exit proceedings will begin. Contact your zone manager.</div>':''}
+      </div>
+      <div class="pv-card">
+        <h3>Your Customers</h3>
+        <div class="pv-metric"><span class="label">Active Connections</span><span class="value" style="font-size:20px">${p.connections.active}</span></div>
+        <div class="pv-metric"><span class="label">Pending Installs</span><span class="value">${p.connections.pending}</span></div>
+        <div class="pv-metric"><span class="label">Offered This Period</span><span class="value">${p.stats.offered}</span></div>
+        <div class="pv-metric"><span class="label">Accepted</span><span class="value good">${p.stats.accepted}</span></div>
+      </div>
+      <div class="pv-card">
+        <h3>Your Earnings</h3>
+        <div class="pv-metric"><span class="label">Wallet Balance</span><span class="value" style="color:#60a5fa;font-size:18px">₹${p.wallet.balance.toLocaleString()}</span></div>
+        ${p.wallet.frozen?'<div style="color:#ef4444;font-size:11px;padding:4px 6px;background:#fef2f2;border-radius:4px">Payouts temporarily on hold</div>':''}
+        <div class="pv-metric"><span class="label">Earnings Per Recharge</span><span class="value">₹${SPR.RC01}</span></div>
+        <div class="pv-metric"><span class="label">Total Earned</span><span class="value">₹${p.compensation.totalEarned.toLocaleString()}</span></div>
+        ${p.compensation.bonusTier!=='NONE'?`<div style="margin-top:6px;padding:4px 6px;background:#ecfdf5;border-radius:4px;font-size:11px;color:#059669">✓ Quality bonus active: ${p.compensation.bonusTier}</div>`:''}
+      </div>
+    </div>`;
+}
+
+// ============================================================
+// SECTION 19b: INTERNAL DOSSIER (System view — everything the OS knows)
+// ============================================================
+function renderDossierView(){
+  const el=document.getElementById('dossier-view');
+  const p=S.partners.find(x=>x.id===S.selectedPartnerId)||S.partners[0];
+  if(!p){el.innerHTML='<p>No partner selected</p>';return}
+  S.selectedPartnerId=p.id;
+
+  const zone=ZONES.find(z=>z.id===p.zoneId);
+  const qc=p.quality.composite;
+  const ePerf=p.enforcement.perfState;
+  const preExitNote=ePerf==='PRE_EXIT'?`<div style="margin-top:12px;padding:10px;background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;font-size:12px;color:#991b1b">
+    <b>⚠ PRE_EXIT — What happens next (Exit OS v1.6):</b><br>
+    1. Formal notice period issued to partner<br>
+    2. Customer migration begins — active connections re-routed to other partners in zone<br>
+    3. Asset recovery process starts (ONT devices returned to Wiom custody)<br>
+    4. Financial settlement — final payout calculated, any holds resolved<br>
+    5. Partnership formally terminated. Re-entry requires full fresh onboarding (no legacy privilege)
+  </div>`:'';
+
+  el.innerHTML=`
+    <div class="pv-select">
+      <select onchange="S.selectedPartnerId=this.value;renderDossierView()">
+        ${S.partners.map(pp=>`<option value="${pp.id}" ${pp.id===p.id?'selected':''}>${pp.id}: ${pp.name} (${pp.city})</option>`).join('')}
+      </select>
+      <span style="color:#dc2626;font-size:11px;font-weight:600">🔒 INTERNAL — Not visible to partner</span>
+    </div>
+    <div class="dos-header">SYSTEM DOSSIER — ${p.name} (${p.id})</div>
+    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:0 0 8px 8px;padding:14px;max-width:900px;margin-bottom:12px">
+      <div class="dos-grid">
+        <div>
+          <h3 style="font-size:12px;color:#d92b90;margin-bottom:8px">QUALITY OS STATE</h3>
+          <div class="pv-metric"><span class="label">Composite</span><span class="value" style="color:${qc==='COMPLIANT'?'#059669':qc==='NON_COMPLIANT'?'#dc2626':qc==='AT_RISK'?'#d97706':'#7c3aed'}">${qc}</span></div>
+          <div class="pv-metric"><span class="label">SS Domain</span><span class="value">${p.quality.ss.value.toFixed(1)}% (${p.quality.ss.state}) — P17: ${p.quality.ss.p17Counter}/${SPR.P17_SS}</span></div>
+          <div class="pv-metric"><span class="label">SR Domain</span><span class="value">${p.quality.sr.value.toFixed(1)}h (${p.quality.sr.state}) — P17: ${p.quality.sr.p17Counter}/${SPR.P17_SR}</span></div>
+          <div class="pv-metric"><span class="label">IQ Domain</span><span class="value">${p.quality.iq.value.toFixed(1)}% (${p.quality.iq.state}) — P17: ${p.quality.iq.p17Counter}/${SPR.P17_IQ}</span></div>
+          <div class="pv-metric"><span class="label">Windows Evaluated</span><span class="value">${p.quality.windowsEvaluated}</span></div>
+          <div class="pv-metric"><span class="label">Recovery Counter</span><span class="value">${p.quality.recoveryCounter}/${SPR.P10_RECOVERY}</span></div>
+        </div>
+        <div>
+          <h3 style="font-size:12px;color:#d97706;margin-bottom:8px">ENFORCEMENT OS STATE</h3>
+          <div class="pv-metric"><span class="label">Performance Track</span><span class="value" style="font-weight:700">${ePerf}</span></div>
+          <div class="pv-metric"><span class="label">Window Counter</span><span class="value">${p.enforcement.perfWindowCounter} (need ${ePerf==='PATTERN_WATCH'?SPR.E02:ePerf==='RESTRICTED'?SPR.E03:'—'} for next escalation)</span></div>
+          <div class="pv-metric"><span class="label">FPV Track</span><span class="value" style="color:${p.enforcement.fpvState==='FPV_CLEAR'?'#059669':'#dc2626'}">${p.enforcement.fpvState}</span></div>
+          ${p.enforcement.fpvFlaggedDay?`<div class="pv-metric"><span class="label">FPV Flagged Day</span><span class="value">Day ${p.enforcement.fpvFlaggedDay} (E04 expires Day ${p.enforcement.fpvFlaggedDay+SPR.E04})</span></div>`:''}
+          <h3 style="font-size:12px;color:#059669;margin-top:12px;margin-bottom:8px">D&A OS STATE</h3>
+          <div class="pv-metric"><span class="label">Exposure Band</span><span class="value">${p.exposure.band}</span></div>
+          <div class="pv-metric"><span class="label">Compliant Cycles</span><span class="value">${p.exposure.compliantCycles}/${SPR.P42} (need ${SPR.P42} for FULL)</span></div>
+          <div class="pv-metric"><span class="label">Ramp Cycles</span><span class="value">${p.exposure.rampCycles}/${SPR.P45}</span></div>
+          <div class="pv-metric"><span class="label">Active / Capacity</span><span class="value">${p.connections.active} / ${SPR.P46}</span></div>
+        </div>
+      </div>
+      ${preExitNote}
+    </div>
+    <div style="padding:12px;background:#fff;border:1px solid #e2e8f0;border-radius:8px;max-width:900px">
+      <h3 style="font-size:12px;color:#6b7280;margin-bottom:8px">FULL EVENT HISTORY — ${p.name}</h3>
+      <div style="font-size:11px;font-family:monospace;max-height:200px;overflow-y:auto">
+        ${S.events.filter(e=>e.partnerId===p.id).slice(-30).reverse().map(e=>{
+          const os=osLabel(e.category);
+          return`<div style="padding:2px 0;border-bottom:1px solid #f1f5f9"><span style="color:#9ca3af">D${e.day}</span> <span class="ev-os-badge ${os.cls}">${os.name}</span> ${e.desc}</div>`;
+        }).join('')||'<span style="color:#9ca3af">No events yet</span>'}
+      </div>
+    </div>`;
+}
+
+// ============================================================
+// SECTION 20: OPS VIEW
+// ============================================================
+function renderOpsView(){
+  const el=document.getElementById('ops-view');
+  if(!S.selectedZoneId)S.selectedZoneId=ZONES[0].id;
+  const zone=ZONES.find(z=>z.id===S.selectedZoneId);
+  const csps=S.partners.filter(p=>p.zoneId===zone.id);
+  const totalActive=csps.reduce((s,p)=>s+p.connections.active,0);
+  const zoneCapacity=csps.length*SPR.P46;
+
+  const comp=csps.filter(p=>p.quality.composite==='COMPLIANT').length;
+  const ar=csps.filter(p=>['AT_RISK','RECOVERY'].includes(p.quality.composite)).length;
+  const nc=csps.filter(p=>p.quality.composite==='NON_COMPLIANT').length;
+  const restricted=csps.filter(p=>p.enforcement.perfState==='RESTRICTED'||p.enforcement.perfState==='PRE_EXIT').length;
+
+  // Connection funnel for this zone today
+  const zoneFlows=S.connectionFlows.filter(f=>f.zoneId===zone.id);
+  const accepted=zoneFlows.filter(f=>f.type==='accepted').length;
+  const expired=zoneFlows.filter(f=>f.type==='expired').length;
+
+  // Business counters for zone
+  const zoneEarned=csps.reduce((s,p)=>s+p.compensation.totalEarned,0);
+  const zoneWallet=csps.reduce((s,p)=>s+p.wallet.balance,0);
+  const eligibleInZone=csps.filter(p=>p.exposure.band.includes('ELIGIBLE')).length;
+  const frozenInZone=csps.filter(p=>p.wallet.frozen).length;
+
+  el.innerHTML=`
+    <div style="margin-bottom:12px;display:flex;gap:8px;align-items:center">
+      <select id="ov-zone-select" onchange="S.selectedZoneId=this.value;renderOpsView()" style="padding:6px 10px;background:#fff;color:#1a1a2e;border:1px solid #d1d5db;border-radius:4px;font-size:13px">
+        ${ZONES.map(z=>`<option value="${z.id}" ${z.id===zone.id?'selected':''}>${z.name} (${z.classification})</option>`).join('')}
+      </select>
+      <span style="color:#6b7280;font-size:12px">Field operations view — zone-level health & business</span>
+    </div>
+    <div class="ov-grid">
+      <div class="ov-card">
+        <h3>Partner Health — ${zone.name}</h3>
+        <div style="display:flex;gap:12px;margin-bottom:8px">
+          <span style="color:#059669;font-size:20px;font-weight:700">${comp}</span><span style="color:#6b7280;font-size:11px">Compliant</span>
+          <span style="color:#d97706;font-size:20px;font-weight:700">${ar}</span><span style="color:#6b7280;font-size:11px">At Risk</span>
+          <span style="color:#dc2626;font-size:20px;font-weight:700">${nc}</span><span style="color:#6b7280;font-size:11px">Non-Comp</span>
+        </div>
+        <div class="ov-bar"><div class="ov-bar-fill" style="width:${csps.length>0?comp/csps.length*100:0}%;background:#059669"></div></div>
+        <div style="font-size:10px;color:#6b7280">${restricted} restricted/pre-exit | ${eligibleInZone}/${csps.length} eligible for routing</div>
+      </div>
+      <div class="ov-card">
+        <h3>Connection Flow Today</h3>
+        <div class="pv-metric"><span class="label">Requests</span><span class="value">${accepted+expired}</span></div>
+        <div class="pv-metric"><span class="label">Fulfilled</span><span class="value good">${accepted}</span></div>
+        <div class="pv-metric"><span class="label">Expired</span><span class="value ${expired>0?'bad':''}">${expired}</span></div>
+        <div class="ov-bar"><div class="ov-bar-fill" style="width:${(accepted+expired)>0?accepted/(accepted+expired)*100:0}%;background:#059669"></div></div>
+      </div>
+      <div class="ov-card">
+        <h3>Zone Business Counters</h3>
+        <div class="pv-metric"><span class="label">Active Connections</span><span class="value" style="font-size:16px;font-weight:700">${totalActive.toLocaleString()}</span></div>
+        <div class="pv-metric"><span class="label">Zone Capacity</span><span class="value">${zoneCapacity}</span></div>
+        <div class="pv-metric"><span class="label">Utilization</span><span class="value ${totalActive/zoneCapacity>.8?'warn':''}">${zoneCapacity>0?(totalActive/zoneCapacity*100).toFixed(1):'0'}%</span></div>
+        <div class="pv-metric"><span class="label">Revenue (Total Earned)</span><span class="value" style="color:#60a5fa">₹${zoneEarned.toLocaleString()}</span></div>
+        <div class="pv-metric"><span class="label">Wallet Balance (Zone)</span><span class="value">₹${zoneWallet.toLocaleString()}</span></div>
+        ${frozenInZone>0?`<div style="color:#ef4444;font-size:10px;margin-top:4px">⚠ ${frozenInZone} wallet(s) frozen</div>`:''}
+        ${expired>0?`<div style="color:#dc2626;font-size:10px;margin-top:2px">⚠ ${expired} unserved customer(s) today — potential revenue loss</div>`:''}
+      </div>
+      <div class="ov-card">
+        <h3>Concentration</h3>
+        ${csps.length>0&&totalActive>0?csps.filter(p=>p.connections.active/totalActive>.3).map(p=>
+          `<div style="font-size:12px;padding:4px 0"><b>${p.name}</b>: ${(p.connections.active/totalActive*100).toFixed(1)}% of zone${p.connections.active/totalActive>=SPR.P56/100?' ⚠ ALERT':''}</div>`
+        ).join('')||'<div style="color:#6b7280;font-size:12px">No concentration risk</div>':''}
+      </div>
+      <div class="ov-card" style="grid-column:1/-1">
+        <h3>Partners in ${zone.name}</h3>
+        <div style="max-height:300px;overflow-y:auto">
+          <div style="display:grid;grid-template-columns:1fr 85px 55px 70px 45px 65px 70px;gap:6px;font-size:11px;font-weight:600;color:#6b7280;padding:4px 0;border-bottom:1px solid #e2e8f0">
+            <span>Partner</span><span>City</span><span>Quality</span><span>Enforce</span><span>Conns</span><span>Exposure</span><span>Earned</span>
+          </div>
+          ${csps.sort((a,b)=>a.quality.composite==='NON_COMPLIANT'?-1:1).map(p=>{
+            const qCol=p.quality.composite==='COMPLIANT'?'#059669':p.quality.composite==='AT_RISK'?'#d97706':p.quality.composite==='NON_COMPLIANT'?'#dc2626':'#475569';
+            const qShort=p.quality.composite==='COMPLIANT'?'OK':p.quality.composite==='AT_RISK'?'AT RISK':p.quality.composite==='NON_COMPLIANT'?'NC':p.quality.composite;
+            const eShort=p.enforcement.perfState==='CLEAR'?'Clear':p.enforcement.perfState==='PATTERN_WATCH'?'Watch':p.enforcement.perfState==='RESTRICTED'?'Restrict':p.enforcement.perfState==='PRE_EXIT'?'PreExit':p.enforcement.perfState;
+            const expShort=p.exposure.band.replace('INELIGIBLE_','⛔').replace('ELIGIBLE_','');
+            return`<div class="ov-partner-row" onclick="selectPartner('${p.id}')" style="cursor:pointer;display:grid;grid-template-columns:1fr 85px 55px 70px 45px 65px 70px;gap:6px;font-size:11px">
+              <span title="${p.id}" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.name}</span>
+              <span style="color:#9ca3af;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.city||''}</span>
+              <span style="color:${qCol};font-weight:600">${qShort}</span>
+              <span style="font-size:10px">${eShort}</span>
+              <span>${p.connections.active}</span>
+              <span style="font-size:9px">${expShort}</span>
+              <span style="color:#60a5fa;font-size:10px">₹${p.compensation.totalEarned.toLocaleString()}</span>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+      <div class="ov-card" style="grid-column:1/-1">
+        <h3>Actions Needed</h3>
+        ${csps.filter(p=>p.enforcement.perfState==='RESTRICTED'||p.enforcement.perfState==='PRE_EXIT').map(p=>
+          `<div style="font-size:12px;padding:4px 0;color:#f59e0b">⚠ ${p.name}: ${p.enforcement.perfState}</div>`
+        ).join('')||'<div style="color:#059669;font-size:12px">No enforcement actions needed</div>'}
+        ${expired>0?`<div style="font-size:12px;padding:4px 0;color:#ef4444">⚠ ${expired} request(s) expired today — zone may need more CSPs</div>`:''}
+        ${csps.filter(p=>p.enforcement.fpvState!=='FPV_CLEAR').map(p=>
+          `<div style="font-size:12px;padding:4px 0;color:#dc2626">🚫 ${p.name}: ${p.enforcement.fpvState} (FPV)</div>`
+        ).join('')}
+      </div>
+    </div>`;
+}
+
+// ============================================================
+// SECTION 21: IMPACT VIEW — System-wide business impact
+// ============================================================
+function renderImpactView(){
+  const el=document.getElementById('impact-view');
+  const ps=S.partners;
+  const totalPartners=ps.length;
+  const compliant=ps.filter(p=>p.quality.composite==='COMPLIANT').length;
+  const atRisk=ps.filter(p=>['AT_RISK','RECOVERY'].includes(p.quality.composite)).length;
+  const nc=ps.filter(p=>p.quality.composite==='NON_COMPLIANT').length;
+  const restricted=ps.filter(p=>p.enforcement.perfState==='RESTRICTED'||p.enforcement.perfState==='PRE_EXIT').length;
+  const suspended=ps.filter(p=>p.enforcement.fpvState==='SUSPENDED'||p.enforcement.fpvState==='TERMINATED').length;
+  const totalActive=ps.reduce((s,p)=>s+p.connections.active,0);
+  const totalCapacity=totalPartners*SPR.P46;
+  const eligiblePartners=ps.filter(p=>p.exposure.band.includes('ELIGIBLE')).length;
+  const ineligiblePartners=ps.filter(p=>p.exposure.band.includes('INELIGIBLE')).length;
+
+  // Revenue metrics
+  const totalEarned=ps.reduce((s,p)=>s+p.compensation.totalEarned,0);
+  const totalWallet=ps.reduce((s,p)=>s+p.wallet.balance,0);
+  const frozenWallets=ps.filter(p=>p.wallet.frozen).length;
+
+  // Connection flow
+  const todayAccepted=S.connectionFlows.filter(f=>f.type==='accepted').length;
+  const todayExpired=S.connectionFlows.filter(f=>f.type==='expired').length;
+  const fulfillRate=(todayAccepted+todayExpired)>0?(todayAccepted/(todayAccepted+todayExpired)*100):100;
+
+  // Zone health
+  const zoneData=ZONES.map(z=>{
+    const zp=ps.filter(p=>p.zoneId===z.id);
+    const zElig=zp.filter(p=>p.exposure.band.includes('ELIGIBLE')).length;
+    const zActive=zp.reduce((s,p)=>s+p.connections.active,0);
+    const zExpired=S.connectionFlows.filter(f=>f.zoneId===z.id&&f.type==='expired').length;
+    return{name:z.name,cls:z.classification,total:zp.length,eligible:zElig,active:zActive,expired:zExpired};
+  });
+
+  el.innerHTML=`
+    <h2 style="font-size:16px;margin-bottom:4px">Impact View — Day ${S.day}</h2>
+    <p style="color:#6b7280;font-size:12px;margin-bottom:16px">Business impact of the OS architecture. What the system is actually achieving for customers, partners, and the business.</p>
+    <div class="impact-grid">
+      <div class="impact-card">
+        <h3>Customer Service Capacity</h3>
+        <div class="impact-big" style="color:#059669">${eligiblePartners}/${totalPartners}</div>
+        <div class="impact-sub">partners currently eligible to serve new customers</div>
+        <div style="margin-top:8px">
+          <div class="pv-metric"><span class="label">Active Connections</span><span class="value">${totalActive.toLocaleString()}</span></div>
+          <div class="pv-metric"><span class="label">System Capacity</span><span class="value">${totalCapacity.toLocaleString()}</span></div>
+          <div class="pv-metric"><span class="label">Utilization</span><span class="value ${totalActive/totalCapacity>.8?'warn':''}">${(totalActive/totalCapacity*100).toFixed(1)}%</span></div>
+        </div>
+      </div>
+      <div class="impact-card">
+        <h3>Today's Demand Fulfillment</h3>
+        <div class="impact-big" style="color:${fulfillRate>=90?'#059669':fulfillRate>=70?'#d97706':'#dc2626'}">${fulfillRate.toFixed(0)}%</div>
+        <div class="impact-sub">of customer requests fulfilled today</div>
+        <div style="margin-top:8px">
+          <div class="pv-metric"><span class="label">Accepted</span><span class="value good">${todayAccepted}</span></div>
+          <div class="pv-metric"><span class="label">Expired (unserved)</span><span class="value ${todayExpired>0?'bad':''}">${todayExpired}</span></div>
+          ${todayExpired>0?`<div style="margin-top:4px;padding:4px 6px;background:#fef2f2;border-radius:4px;font-size:10px;color:#dc2626">⚠ ${todayExpired} customer(s) couldn't get broadband today</div>`:''}
+        </div>
+      </div>
+      <div class="impact-card">
+        <h3>Partner Economics</h3>
+        <div class="impact-big" style="color:#60a5fa">₹${totalEarned.toLocaleString()}</div>
+        <div class="impact-sub">total earned by all partners</div>
+        <div style="margin-top:8px">
+          <div class="pv-metric"><span class="label">Wallet Balance (all)</span><span class="value">₹${totalWallet.toLocaleString()}</span></div>
+          <div class="pv-metric"><span class="label">Wallets Frozen</span><span class="value ${frozenWallets>0?'bad':''}">${frozenWallets}</span></div>
+          <div class="pv-metric"><span class="label">Avg Earning/Partner</span><span class="value">₹${totalPartners>0?Math.round(totalEarned/totalPartners).toLocaleString():'0'}</span></div>
+        </div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:1200px">
+      <div class="impact-card">
+        <h3>System Quality Distribution</h3>
+        <div style="display:flex;gap:4px;height:28px;border-radius:4px;overflow:hidden;margin-bottom:8px">
+          <div style="flex:${compliant};background:#059669" title="${compliant} Compliant"></div>
+          <div style="flex:${atRisk};background:#d97706" title="${atRisk} At Risk/Recovery"></div>
+          <div style="flex:${nc};background:#dc2626" title="${nc} Non-Compliant"></div>
+        </div>
+        <div style="display:flex;gap:16px;font-size:11px">
+          <span><span style="color:#059669">●</span> Compliant: ${compliant} (${(compliant/totalPartners*100).toFixed(0)}%)</span>
+          <span><span style="color:#d97706">●</span> At Risk: ${atRisk} (${(atRisk/totalPartners*100).toFixed(0)}%)</span>
+          <span><span style="color:#dc2626">●</span> NC: ${nc} (${(nc/totalPartners*100).toFixed(0)}%)</span>
+        </div>
+        <div style="margin-top:8px;font-size:11px;color:#6b7280">
+          ${restricted>0?`<div>⚠ ${restricted} restricted/pre-exit (enforcement active)</div>`:''}
+          ${suspended>0?`<div>🚫 ${suspended} suspended/terminated (FPV)</div>`:''}
+          ${ineligiblePartners>0?`<div>⛔ ${ineligiblePartners} ineligible for routing</div>`:''}
+        </div>
+      </div>
+      <div class="impact-card">
+        <h3>Zone Health</h3>
+        <div style="max-height:220px;overflow-y:auto">
+          ${zoneData.map(z=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #f1f5f9;font-size:12px">
+            <span><b>${z.name}</b> <span style="color:#9ca3af;font-size:10px">${z.cls}</span></span>
+            <span style="display:flex;gap:8px">
+              <span title="Eligible/Total partners" style="color:${z.eligible<z.total/2?'#dc2626':'#059669'}">${z.eligible}/${z.total}</span>
+              <span title="Active connections" style="color:#6b7280">${z.active} conns</span>
+              ${z.expired>0?`<span title="Expired today" style="color:#dc2626">⚠${z.expired}</span>`:''}
+            </span>
+          </div>`).join('')}
+        </div>
+      </div>
+    </div>`;
+}
+
+// ============================================================
+// SECTION 22: PARAMETERS VIEW
+// ============================================================
+function renderParamsView(){
+  const el=document.getElementById('params-view');
+  const groups=[
+    {name:'Quality OS',params:[
+      {id:'P01',label:'Evaluation window (days)',key:'P01'},
+      {id:'THRESH_SS',label:'Service Stability threshold (%)',key:'THRESH_SS'},
+      {id:'THRESH_SR',label:'Service Resolution threshold (hours)',key:'THRESH_SR'},
+      {id:'THRESH_IQ',label:'Installation Quality threshold (%)',key:'THRESH_IQ'},
+      {id:'P12',label:'Min connections for eval',key:'P12'},
+      {id:'P15',label:'Visibility delay (days)',key:'P15'},
+      {id:'P17_SS',label:'Chronic timer SS (windows)',key:'P17_SS'},
+      {id:'P17_SR',label:'Chronic timer SR (windows)',key:'P17_SR'},
+      {id:'P17_IQ',label:'Chronic timer IQ (windows)',key:'P17_IQ'},
+      {id:'P18',label:'Min installs for IQ eval',key:'P18'},
+    ]},
+    {name:'Enforcement OS',params:[
+      {id:'E02',label:'NC windows → Restricted',key:'E02'},
+      {id:'E03',label:'Additional NC → Pre-Exit',key:'E03'},
+      {id:'E04',label:'FPV investigation window (days)',key:'E04'},
+    ]},
+    {name:'Demand & Allocation OS',params:[
+      {id:'P42',label:'Compliant cycles for FULL',key:'P42'},
+      {id:'P43',label:'Recovery window (cycles)',key:'P43'},
+      {id:'P44',label:'Reduced exposure multiplier',key:'P44'},
+      {id:'P45',label:'Ramp period (cycles)',key:'P45'},
+      {id:'P46',label:'Max connections per CSP',key:'P46'},
+      {id:'P53',label:'Baseline exposure multiplier',key:'P53'},
+      {id:'P56',label:'Concentration threshold (%)',key:'P56'},
+      {id:'P58',label:'Sustained concentration cycles',key:'P58'},
+    ]},
+    {name:'Connection Lifecycle',params:[
+      {id:'P74',label:'Install window (days)',key:'P74'},
+      {id:'P75',label:'Request expiry (days)',key:'P75'},
+      {id:'P76',label:'Pause max (days)',key:'P76'},
+      {id:'P78',label:'Max install retries',key:'P78'},
+    ]},
+    {name:'Compensation',params:[
+      {id:'RC01',label:'Base payout per recharge (₹)',key:'RC01'},
+      {id:'BONUS_GOOD',label:'Bonus GOOD (₹)',key:'BONUS_GOOD'},
+      {id:'BONUS_VG',label:'Bonus VERY GOOD (₹)',key:'BONUS_VG'},
+      {id:'BONUS_EX',label:'Bonus EXCELLENT (₹)',key:'BONUS_EX'},
+      {id:'RECHARGE_CYCLE',label:'Recharge cycle (days)',key:'RECHARGE_CYCLE'},
+    ]},
+    {name:'Simulation',params:[
+      {id:'SIM_DAYS',label:'Total simulation days',key:'SIM_DAYS'},
+    ]},
+  ];
+
+  el.innerHTML=`
+    <h2 style="font-size:16px;margin-bottom:4px">System Parameter Registry (SPR)</h2>
+    <p style="color:#6b7280;font-size:12px;margin-bottom:16px">All parameters are editable. Changes take effect from the current simulation day (forward-effective). Per SPR v1.1 governance.</p>
+    <div class="params-grid">
+      ${groups.map(g=>`<div class="param-group">
+        <h3>${g.name}</h3>
+        ${g.params.map(p=>`<div class="param-row">
+          <span class="p-id">${p.id}</span>
+          <span class="p-label">${p.label}</span>
+          <input type="number" id="param-${p.key}" value="${SPR[p.key]}" step="${p.key.includes('M_')||p.key==='P44'||p.key==='P53'?'0.1':'1'}"
+            onchange="updateParam('${p.key}',this.value,this)">
+        </div>`).join('')}
+      </div>`).join('')}
+    </div>
+    <div id="params-actions">
+      <button class="btn-reset" onclick="resetParams()">Reset to Defaults</button>
+    </div>`;
+}
+
+function updateParam(key,value,input){
+  const num=parseFloat(value);
+  if(isNaN(num))return;
+  const old=SPR[key];
+  SPR[key]=num;
+  input.classList.add('param-changed');
+  emit('PARAM_CHANGE','injection',null,
+    `Parameter ${key}: ${old} → ${num}`,
+    [`Forward-effective from Day ${S.day}`,`Rule: SPR v1.1, parameter governance`]
+  );
+}
+
+function resetParams(){
+  SPR={...SPR_DEFAULTS};
+  renderParamsView();
+  emit('PARAM_RESET','injection',null,'All parameters reset to defaults',['SPR reset']);
+}
+
+// ============================================================
+// SECTION 23: NARRATIVE ENGINE
+// ============================================================
+function generateNarrative(){
+  const dayEvs=S.events.filter(e=>e.day===S.day);
+  const isEvalDay=S.day%SPR.P01===0;
+  if(dayEvs.length===0){
+    S.narrative=isEvalDay?'Evaluation day, but no quality state changes — all partners held steady.':'Routine day — only connection lifecycle and routing running. No state changes.';
+    addTimeline([{os:'lifecycle',text:'Quiet day — no state changes.'}]);return;
+  }
+
+  const parts=[];
+  const tlEntries=[];
+  // Lead with eval day context
+  if(isEvalDay){
+    parts.push(`<span class="nar-os os-quality">Quality OS</span> <b>evaluation day</b> (Window ${S.qualityWindow}) — all partners evaluated simultaneously.`);
+  }
+
+  // Count quality changes
+  const qEvs=dayEvs.filter(e=>e.category==='quality');
+  if(qEvs.length>0){
+    const toNC=qEvs.filter(e=>e.desc.includes('NON_COMPLIANT')).length;
+    const toAR=qEvs.filter(e=>e.desc.includes('AT_RISK')).length;
+    const toComp=qEvs.filter(e=>e.desc.includes('COMPLIANT')&&!e.desc.includes('NON_')).length;
+    const toRecov=qEvs.filter(e=>e.desc.includes('RECOVERY')).length;
+    const qParts=[];
+    if(toNC>0)qParts.push(`${toNC} partners fell to Non-Compliant`);
+    if(toAR>0)qParts.push(`${toAR} moved to At Risk`);
+    if(toComp>0)qParts.push(`${toComp} achieved Compliant`);
+    if(toRecov>0)qParts.push(`${toRecov} entered Recovery`);
+    if(qParts.length>0){
+      const txt=`<span class="nar-os os-quality">Quality OS</span> evaluated all partners (Window ${S.qualityWindow}): ${qParts.join(', ')}.`;
+      parts.push(txt);
+      tlEntries.push({os:'quality',text:`Quality evaluation Window ${S.qualityWindow}: ${qParts.join(', ')}.`});
+    }
+  }
+
+  // Enforcement changes
+  const eEvs=dayEvs.filter(e=>e.category==='enforcement');
+  if(eEvs.length>0){
+    const restricted=eEvs.filter(e=>e.desc.includes('RESTRICTED')).length;
+    const preExit=eEvs.filter(e=>e.desc.includes('PRE_EXIT')).length;
+    const cleared=eEvs.filter(e=>e.desc.includes('CLEAR')&&e.type==='ENF_CLEAR').length;
+    const eParts=[];
+    if(restricted>0)eParts.push(`${restricted} restricted`);
+    if(preExit>0)eParts.push(`${preExit} moved to pre-exit`);
+    if(cleared>0)eParts.push(`${cleared} cleared`);
+    if(eParts.length>0){
+      const txt=`<span class="nar-os os-enforcement">Enforcement OS</span> ${eParts.join(', ')}.`;
+      parts.push(txt);
+      tlEntries.push({os:'enforcement',text:`Enforcement actions: ${eParts.join(', ')}.`});
+    }
+  }
+
+  // FPV events (state transitions — flagged, suspended, terminated)
+  const fpvEvs=dayEvs.filter(e=>e.category==='fpv');
+  fpvEvs.forEach(e=>{
+    const txt=`<span class="nar-os os-fpv">FPV Track</span> ${e.desc}`;
+    parts.push(txt);
+    tlEntries.push({os:'fpv',text:e.desc});
+  });
+
+  // FPV ongoing investigation progress (show countdown even on quiet days)
+  const fpvActive=S.partners.filter(p=>p.enforcement.fpvState==='FPV_FLAGGED'||p.enforcement.fpvState==='SUSPENDED');
+  fpvActive.forEach(p=>{
+    const e=p.enforcement;
+    const daysFlagged=S.day-e.fpvFlaggedDay;
+    // Skip the day of the transition event itself (already shown above)
+    const hasFpvEvent=fpvEvs.some(ev=>ev.partnerId===p.id);
+    if(hasFpvEvent)return;
+
+    if(e.fpvState==='FPV_FLAGGED'){
+      const remaining=SPR.E04-daysFlagged;
+      if(remaining>0&&daysFlagged>0){
+        const txt=`<span class="nar-os os-fpv">FPV Track</span> <b>${p.name}</b>: Investigation day ${daysFlagged} of ${SPR.E04} — wallet frozen, no new customers routed. <em>${remaining} day${remaining>1?'s':''} until auto-suspension.</em>`;
+        parts.push(txt);
+        tlEntries.push({os:'fpv',text:`${p.name}: FPV investigation day ${daysFlagged}/${SPR.E04}, ${remaining}d to suspension`});
+      }
+    } else if(e.fpvState==='SUSPENDED'){
+      const suspDays=S.day-e.suspendedDay;
+      if(e.fpvSeverity==='CRITICAL'){
+        const txt=`<span class="nar-os os-fpv">FPV Track</span> <b>${p.name}</b>: SUSPENDED (CRITICAL severity) — termination imminent tomorrow.`;
+        parts.push(txt);
+        tlEntries.push({os:'fpv',text:`${p.name}: SUSPENDED CRITICAL, termination imminent`});
+      } else {
+        const totalRemaining=SPR.E04*2-daysFlagged;
+        if(totalRemaining>0&&suspDays>0){
+          const txt=`<span class="nar-os os-fpv">FPV Track</span> <b>${p.name}</b>: SUSPENDED — all routing stopped, customer migration underway. <em>${totalRemaining} day${totalRemaining>1?'s':''} until termination.</em>`;
+          parts.push(txt);
+          tlEntries.push({os:'fpv',text:`${p.name}: SUSPENDED day ${suspDays}, ${totalRemaining}d to termination`});
+        }
+      }
+    }
+  });
+
+  // Routing
+  const rEvs=dayEvs.filter(e=>e.category==='routing');
+  if(rEvs.length>0){
+    const assigned=rEvs.filter(e=>e.type==='CONN_ACCEPTED').length;
+    const expired=rEvs.filter(e=>e.type==='CONN_EXPIRED'||e.type==='CONN_DECLINED_EXPIRED').length;
+    if(assigned>0||expired>0){
+      const rParts=[];
+      if(assigned>0)rParts.push(`${assigned} new connections routed`);
+      if(expired>0)rParts.push(`${expired} requests expired (no capacity)`);
+      const txt=`<span class="nar-os os-routing">D&A OS</span> ${rParts.join(', ')}.`;
+      parts.push(txt);
+      tlEntries.push({os:'routing',text:`Routing: ${rParts.join(', ')}.`});
+    }
+  }
+
+  // Compensation
+  const cEvs=dayEvs.filter(e=>e.category==='compensation');
+  if(cEvs.length>0){
+    const totalPaid=cEvs.reduce((s,e)=>s+(e.payload?.amount||0),0);
+    if(totalPaid>0){
+      const txt=`<span class="nar-os os-compensation">Compensation OS</span> ₹${totalPaid.toLocaleString()} paid across ${cEvs.length} partners.`;
+      parts.push(txt);
+      tlEntries.push({os:'compensation',text:`₹${totalPaid.toLocaleString()} paid to ${cEvs.length} partners.`});
+    }
+  }
+
+  // Concentration
+  const conEvs=dayEvs.filter(e=>e.category==='concentration');
+  conEvs.forEach(e=>{
+    parts.push(`<span class="nar-os os-concentration">Concentration</span> ${e.desc}`);
+    tlEntries.push({os:'concentration',text:e.desc});
+  });
+
+  // Injections
+  const injEvs=dayEvs.filter(e=>e.category==='injection');
+  injEvs.forEach(e=>{
+    parts.push(`<span class="nar-os os-injection">Injection</span> ${e.desc}`);
+    tlEntries.push({os:'injection',text:e.desc});
+  });
+
+  // Build narrative
+  if(parts.length===0){
+    S.narrative=`<b>Day ${S.day}:</b> Routine operations — connections serviced, no state changes.`;
+    addTimeline([{os:'lifecycle',text:'Routine operations, no state changes.'}]);
+  } else {
+    S.narrative=`<b>Day ${S.day}:</b> `+parts.join(' ');
+    addTimeline(tlEntries);
+  }
+}
+
+function addTimeline(entries){
+  // Find or create today's group
+  let dayGroup=S.timeline.find(t=>t.day===S.day);
+  if(!dayGroup){dayGroup={day:S.day,entries:[]};S.timeline.push(dayGroup)}
+  entries.forEach(e=>dayGroup.entries.push(e));
+}
+
+// ============================================================
+// SECTION 24: TIMELINE VIEW
+// ============================================================
+function renderTimelineView(){
+  const el=document.getElementById('timeline-view');
+  const filter=S.tlFilter;
+  const days=S.timeline.slice().reverse();
+
+  el.innerHTML=`
+    <h2>Timeline</h2>
+    <p class="tl-subtitle">Plain-English history of everything that happened in the simulation — which OS did what, and when.</p>
+    <div class="tl-filters">
+      <button class="${filter==='all'?'active':''}" onclick="S.tlFilter='all';renderTimelineView()">All</button>
+      <button class="${filter==='quality'?'active':''}" onclick="S.tlFilter='quality';renderTimelineView()">Quality</button>
+      <button class="${filter==='enforcement'?'active':''}" onclick="S.tlFilter='enforcement';renderTimelineView()">Enforcement</button>
+      <button class="${filter==='routing'?'active':''}" onclick="S.tlFilter='routing';renderTimelineView()">Routing</button>
+      <button class="${filter==='fpv'?'active':''}" onclick="S.tlFilter='fpv';renderTimelineView()">FPV</button>
+      <button class="${filter==='compensation'?'active':''}" onclick="S.tlFilter='compensation';renderTimelineView()">Compensation</button>
+      <button class="${filter==='injection'?'active':''}" onclick="S.tlFilter='injection';renderTimelineView()">Injections</button>
+    </div>
+    <div style="max-height:calc(100vh - 200px);overflow-y:auto">
+    ${days.map(dg=>{
+      const entries=filter==='all'?dg.entries:dg.entries.filter(e=>e.os===filter);
+      if(entries.length===0)return'';
+      return`<div class="tl-day-group">
+        <div class="tl-day-header">Day ${dg.day}</div>
+        ${entries.map(e=>{
+          const os=osLabel(e.os);
+          return`<div class="tl-entry"><span class="tl-os"><span class="ev-os-badge ${os.cls}">${os.name}</span></span><span class="tl-text">${e.text}</span></div>`;
+        }).join('')}
+      </div>`;
+    }).join('')}
+    ${days.length===0?'<p style="color:#6b7280;font-size:13px;padding:20px 0">No events yet. Run the simulation to see the timeline.</p>':''}
+    </div>`;
+}
+
+// ============================================================
+// SECTION 25: REFERENCE VIEW
+// ============================================================
+function renderReferenceView(){
+  const el=document.getElementById('reference-view');
+  const tab=S.refTab;
+
+  el.innerHTML=`
+    <h2>Reference Guide</h2>
+    <div class="ref-tabs">
+      <button class="${tab==='glossary'?'active':''}" onclick="S.refTab='glossary';renderReferenceView()">Glossary</button>
+      <button class="${tab==='colors'?'active':''}" onclick="S.refTab='colors';renderReferenceView()">Color Legend</button>
+      <button class="${tab==='params'?'active':''}" onclick="S.refTab='params';renderReferenceView()">Parameters</button>
+      <button class="${tab==='walkthroughs'?'active':''}" onclick="S.refTab='walkthroughs';renderReferenceView()">Scenario Walkthroughs</button>
+    </div>
+    <div class="ref-content">${
+      tab==='glossary'?renderRefGlossary():
+      tab==='colors'?renderRefColors():
+      tab==='params'?renderRefParams():
+      tab==='walkthroughs'?renderRefWalkthroughs():''
+    }</div>`;
+}
+
+function renderRefGlossary(){
+  return`
+  <div class="ref-section">
+    <h3>How the System Works — The OS Architecture</h3>
+    <p style="font-size:12px;color:#6b7280;margin-bottom:8px">Wiom runs on 20 interconnected Operating Systems. Read them in order — each one builds on the last. The 7 marked <b>✓ Active</b> are running in this simulation.</p>
+    <table class="ref-table">
+      <tr><th>#</th><th>OS</th><th>The Question It Answers</th><th>What It Does</th><th>In Sim?</th></tr>
+      <tr style="background:#f0fdf4"><td>1</td><td><span class="ev-os-badge os-lifecycle">Connection Lifecycle</span></td><td><b>"A customer wants WiFi — what happens?"</b></td><td>Manages every connection from request → install → active → recharge → pause. The basic unit of the system.</td><td style="color:#059669;font-weight:600">✓</td></tr>
+      <tr style="background:#f0fdf4"><td>2</td><td><span class="ev-os-badge os-routing">Demand & Allocation</span></td><td><b>"Which partner should serve this customer?"</b></td><td>Routes each request to the best partner — filters by eligibility, ranks by quality, balances by load.</td><td style="color:#059669;font-weight:600">✓</td></tr>
+      <tr style="background:#f0fdf4"><td>3</td><td><span class="ev-os-badge os-quality">Quality</span></td><td><b>"Is this partner doing a good job?"</b></td><td>Evaluates 3 domains (uptime, resolution speed, install quality) every ${SPR.P01} days. Classifies as COMPLIANT / AT_RISK / NON_COMPLIANT / RECOVERY.</td><td style="color:#059669;font-weight:600">✓</td></tr>
+      <tr style="background:#f0fdf4"><td>4</td><td><span class="ev-os-badge os-enforcement">Enforcement</span></td><td><b>"What if they keep failing?"</b></td><td>Two tracks: <b>Performance</b> (quality failures → restrict → pre-exit) and <b>FPV</b> (fraud/cheating → suspend → terminate). Both independent.</td><td style="color:#059669;font-weight:600">✓</td></tr>
+      <tr style="background:#f0fdf4"><td>5</td><td><span class="ev-os-badge os-fpv">FPV Track</span></td><td><b>"What if they cheat?"</b></td><td>Handles disintermediation, fraud, policy violations. Independent of quality — a partner with great service who cheats still gets caught.</td><td style="color:#059669;font-weight:600">✓</td></tr>
+      <tr style="background:#f0fdf4"><td>6</td><td><span class="ev-os-badge os-compensation">Compensation</span></td><td><b>"How do partners earn money?"</b></td><td>₹${SPR.RC01} base per customer recharge + quality bonuses. Better service = higher earnings. Frozen if under FPV investigation.</td><td style="color:#059669;font-weight:600">✓</td></tr>
+      <tr style="background:#f0fdf4"><td>7</td><td><span class="ev-os-badge os-concentration">Concentration</span></td><td><b>"What if one partner dominates a zone?"</b></td><td>Protects against over-reliance. If one partner holds >${SPR.P56}% of a zone's connections → alert → diversify → cap.</td><td style="color:#059669;font-weight:600">✓</td></tr>
+      <tr><td>8</td><td style="font-weight:600">Visibility</td><td><b>"What does the partner see?"</b></td><td>Controls what partners see on their dashboard. PATTERN_WATCH hidden. P17 counters hidden. They see sanitized versions.</td><td style="color:#d97706">Ref'd</td></tr>
+      <tr><td>9</td><td style="font-weight:600">Exit</td><td><b>"How does a partnership end?"</b></td><td>Formal process: notice → customer migration → asset recovery → financial settlement → re-entry rules.</td><td style="color:#d97706">Ref'd</td></tr>
+      <tr><td>10</td><td style="font-weight:600">System Parameters</td><td><b>"Who controls all the thresholds?"</b></td><td>Central registry of every threshold, timer, multiplier across all OSs. Changes are forward-effective.</td><td style="color:#d97706">Editable</td></tr>
+      <tr><td>11</td><td style="font-weight:600">Capacity & Coverage</td><td>"How many partners does a zone need?"</td><td>Zone capacity planning, initial partner caps, coverage goals.</td><td style="color:#9ca3af">—</td></tr>
+      <tr><td>12</td><td style="font-weight:600">Onboarding</td><td>"How does a new partner start?"</td><td>Quiz, training, ramp period, initial capacity allocation.</td><td style="color:#9ca3af">—</td></tr>
+      <tr><td>13</td><td style="font-weight:600">Asset Custody</td><td>"Who has the hardware?"</td><td>Tracks ONTs/routers assigned to partners. Recovery on exit.</td><td style="color:#9ca3af">—</td></tr>
+      <tr><td>14</td><td style="font-weight:600">Payment Settlement</td><td>"How does money actually move?"</td><td>Partner payouts, customer billing, refunds, wallet operations.</td><td style="color:#9ca3af">—</td></tr>
+      <tr><td>15</td><td style="font-weight:600">Communication</td><td>"How does the system talk to partners?"</td><td>Automated notifications, warnings, escalation alerts.</td><td style="color:#9ca3af">—</td></tr>
+      <tr><td>16</td><td style="font-weight:600">Training & Certification</td><td>"Is the partner skilled enough?"</td><td>Ongoing training requirements, certification status.</td><td style="color:#9ca3af">—</td></tr>
+      <tr><td>17</td><td style="font-weight:600">Appeals & Exceptions</td><td>"What if a partner disagrees?"</td><td>Dispute handling, manual overrides, exception requests.</td><td style="color:#9ca3af">—</td></tr>
+      <tr><td>18</td><td style="font-weight:600">Customer Experience</td><td>"Is the end customer happy?"</td><td>Satisfaction tracking, NPS, complaint patterns tied to partner quality.</td><td style="color:#9ca3af">—</td></tr>
+      <tr><td>19</td><td style="font-weight:600">Reporting & Analytics</td><td>"What's the big picture?"</td><td>Aggregated dashboards, trend analysis, strategic insights.</td><td style="color:#9ca3af">—</td></tr>
+      <tr><td>20</td><td style="font-weight:600">Audit & Compliance</td><td>"Is everything logged?"</td><td>Audit trails, governance compliance, event sourcing.</td><td style="color:#9ca3af">—</td></tr>
+    </table>
+  </div>
+
+  <div class="ref-section">
+    <h3>Zone Classifications</h3>
+    <table class="ref-table">
+      <tr><th>Class</th><th>Multiplier</th><th>Meaning</th></tr>
+      <tr><td style="font-weight:600">A</td><td>${SPR.P59_A}×</td><td>Urban high-density zones. More connections per partner, faster demand.</td></tr>
+      <tr><td style="font-weight:600">B</td><td>${SPR.P59_B}×</td><td>Semi-urban or peri-urban zones. Moderate demand.</td></tr>
+      <tr><td style="font-weight:600">C</td><td>${SPR.P59_C}×</td><td>Rural zones. Lower density, fewer connections per partner.</td></tr>
+    </table>
+    <p style="font-size:11px;color:#6b7280;margin-top:6px">Zone class multipliers affect demand generation rate in the simulation. Higher multiplier = more connection requests per day.</p>
+  </div>
+
+  <div class="ref-section">
+    <h3>Quality States</h3>
+    <table class="ref-table">
+      <tr><th>State</th><th>Meaning</th><th>What Happens</th></tr>
+      <tr><td style="color:#059669;font-weight:600">COMPLIANT</td><td>All 3 quality domains meet thresholds</td><td>Full exposure, eligible for bonuses, routing priority</td></tr>
+      <tr><td style="color:#d97706;font-weight:600">AT_RISK</td><td>1+ domains below threshold</td><td>Reduced exposure, chronic timer ticking, warning issued</td></tr>
+      <tr><td style="color:#dc2626;font-weight:600">NON_COMPLIANT</td><td>Chronic timer expired in any domain</td><td>Baseline/ineligible exposure, enforcement track activates</td></tr>
+      <tr><td style="color:#7c3aed;font-weight:600">RECOVERY</td><td>Was NC, now improving (domains passing)</td><td>Reduced exposure, needs ${SPR.P10_RECOVERY} consecutive improving windows to return to COMPLIANT</td></tr>
+    </table>
+  </div>
+
+  <div class="ref-section">
+    <h3>Quality Domains</h3>
+    <table class="ref-table">
+      <tr><th>Domain</th><th>Abbrev</th><th>Metric</th><th>Threshold</th><th>Chronic Timer</th></tr>
+      <tr><td>Service Stability</td><td>SS</td><td>Uptime %</td><td>≥${SPR.THRESH_SS}%</td><td>${SPR.P17_SS} windows</td></tr>
+      <tr><td>Service Resolution</td><td>SR</td><td>Resolution time (hours)</td><td>≤${SPR.THRESH_SR}h</td><td>${SPR.P17_SR} windows</td></tr>
+      <tr><td>Installation Quality</td><td>IQ</td><td>First-install success %</td><td>≥${SPR.THRESH_IQ}%</td><td>${SPR.P17_IQ} windows</td></tr>
+    </table>
+  </div>
+
+  <div class="ref-section">
+    <h3>Enforcement States (Performance Track)</h3>
+    <table class="ref-table">
+      <tr><th>State</th><th>Meaning</th><th>Trigger</th></tr>
+      <tr><td>CLEAR</td><td>No enforcement action</td><td>Default state / auto-clear on reaching COMPLIANT</td></tr>
+      <tr><td>PATTERN_WATCH</td><td>System is watching — first AT_RISK detection</td><td>E01=${SPR.E01} (structural, immediate)</td></tr>
+      <tr><td>RESTRICTED</td><td>Reduced routing, limited exposure</td><td>${SPR.E02} consecutive NC windows</td></tr>
+      <tr><td>PRE_EXIT</td><td>Final warning before exit process</td><td>${SPR.E03} additional NC windows after RESTRICTED</td></tr>
+    </table>
+  </div>
+
+  <div class="ref-section">
+    <h3>Enforcement States (FPV / Integrity Track)</h3>
+    <table class="ref-table">
+      <tr><th>State</th><th>Meaning</th><th>Trigger</th></tr>
+      <tr><td>FPV_CLEAR</td><td>No integrity issues</td><td>Default state</td></tr>
+      <tr><td>FPV_FLAGGED</td><td>Under investigation, financial hold applied</td><td>Disintermediation/fraud/policy violation detected</td></tr>
+      <tr><td>SUSPENDED</td><td>All routing stopped, investigation ongoing</td><td>E04=${SPR.E04} days without resolution, or CRITICAL severity</td></tr>
+      <tr><td>TERMINATED</td><td>Partnership ended permanently</td><td>CRITICAL fraud confirmed</td></tr>
+    </table>
+  </div>
+
+  <div class="ref-section">
+    <h3>Exposure Bands</h3>
+    <table class="ref-table">
+      <tr><th>Band</th><th>Display</th><th>Meaning</th></tr>
+      <tr><td>ELIGIBLE_FULL</td><td>FULL</td><td>Maximum routing priority — ${SPR.P42}+ consecutive compliant cycles</td></tr>
+      <tr><td>ELIGIBLE_REDUCED</td><td>REDUCED</td><td>Partial routing (${SPR.P44}× multiplier) — recovering or at-risk</td></tr>
+      <tr><td>ELIGIBLE_BASELINE</td><td>BASELINE</td><td>Minimum routing (${SPR.P53}× multiplier) — still in ramp period</td></tr>
+      <tr><td>INELIGIBLE_QUALITY</td><td>⛔ QUALITY</td><td>No routing — quality too poor</td></tr>
+      <tr><td>INELIGIBLE_ENFORCEMENT</td><td>⛔ ENFORCEMENT</td><td>No routing — under enforcement restriction</td></tr>
+      <tr><td>INELIGIBLE_CAPACITY</td><td>⛔ CAPACITY</td><td>No routing — at max connections (P46=${SPR.P46})</td></tr>
+    </table>
+  </div>
+
+  <div class="ref-section">
+    <h3>Abbreviations</h3>
+    <table class="ref-table">
+      <tr><th>Abbrev</th><th>Full Form</th></tr>
+      <tr><td>CSP</td><td>Channel Service Partner (the local broadband partner)</td></tr>
+      <tr><td>SPR</td><td>System Parameter Registry — governs all thresholds and timers</td></tr>
+      <tr><td>FPV</td><td>Fraud / Policy Violation track</td></tr>
+      <tr><td>D&A</td><td>Demand & Allocation (routing engine)</td></tr>
+      <tr><td>NC</td><td>Non-Compliant</td></tr>
+      <tr><td>AR</td><td>At Risk</td></tr>
+      <tr><td>SS / SR / IQ</td><td>Service Stability / Service Resolution / Installation Quality</td></tr>
+      <tr><td>P01, E02, etc.</td><td>Parameter IDs from the SPR (see Parameters tab)</td></tr>
+      <tr><td>P17</td><td>Chronic timer — counts consecutive failing windows per domain</td></tr>
+    </table>
+  </div>`;
+}
+
+function renderRefColors(){
+  return`
+  <div class="ref-section">
+    <h3>Partner Dot Colors (Zone Map)</h3>
+    <table class="ref-table">
+      <tr><th>Visual</th><th>Quality State</th><th>Meaning</th></tr>
+      <tr><td><span class="ref-legend-dot" style="background:#059669"></span></td><td>Compliant</td><td>All quality domains passing — good partner</td></tr>
+      <tr><td><span class="ref-legend-dot" style="background:#d97706"></span></td><td>At Risk</td><td>One or more domains failing — chronic timer ticking</td></tr>
+      <tr><td><span class="ref-legend-dot" style="background:#dc2626"></span></td><td>Non-Compliant</td><td>Chronic timer expired — enforcement track active</td></tr>
+      <tr><td><span class="ref-legend-dot" style="background:#7c3aed"></span></td><td>Recovery</td><td>Was NC, now improving — needs consecutive good windows</td></tr>
+      <tr><td><span class="ref-legend-dot" style="background:#475569"></span></td><td>Pending</td><td>Not yet evaluated (before first quality window)</td></tr>
+    </table>
+  </div>
+  <div class="ref-section">
+    <h3>Partner Dot Borders (Enforcement)</h3>
+    <table class="ref-table">
+      <tr><th>Visual</th><th>State</th><th>Meaning</th></tr>
+      <tr><td><span class="ref-legend-dot" style="background:#fff;border:3px solid #f59e0b"></span></td><td>Restricted</td><td>Reduced routing access — partner under enforcement</td></tr>
+      <tr><td><span class="ref-legend-dot" style="background:#fff;border:3px solid #f97316"></span> (pulsing)</td><td>Pre-Exit</td><td>Final warning — approaching partnership termination</td></tr>
+      <tr><td><span class="ref-legend-dot" style="background:#fff;border:3px solid #ef4444"></span></td><td>Suspended</td><td>All routing stopped — under FPV investigation</td></tr>
+      <tr><td><span class="ref-legend-dot" style="background:#1f2937;border:3px solid #6b7280"></span></td><td>Terminated</td><td>Partnership ended — no recovery possible</td></tr>
+    </table>
+  </div>
+  <div class="ref-section">
+    <h3>OS Badge Colors (Event Log)</h3>
+    <table class="ref-table">
+      <tr><th>Badge</th><th>OS</th></tr>
+      <tr><td><span class="ev-os-badge os-quality">Quality OS</span></td><td>Quality evaluation events</td></tr>
+      <tr><td><span class="ev-os-badge os-enforcement">Enforcement OS</span></td><td>Performance track enforcement actions</td></tr>
+      <tr><td><span class="ev-os-badge os-routing">D&A OS</span></td><td>Connection routing decisions</td></tr>
+      <tr><td><span class="ev-os-badge os-compensation">Compensation OS</span></td><td>Payment and bonus calculations</td></tr>
+      <tr><td><span class="ev-os-badge os-fpv">FPV Track</span></td><td>Fraud/policy violation events</td></tr>
+      <tr><td><span class="ev-os-badge os-lifecycle">Lifecycle OS</span></td><td>Connection state changes</td></tr>
+      <tr><td><span class="ev-os-badge os-concentration">Concentration</span></td><td>Zone concentration alerts</td></tr>
+      <tr><td><span class="ev-os-badge os-injection">Injection</span></td><td>Manual scenario injections</td></tr>
+    </table>
+  </div>`;
+}
+
+function renderRefParams(){
+  return`
+  <div class="ref-section">
+    <h3>Things to Try — Change These and Watch What Happens</h3>
+    <p style="font-size:12px;color:#6b7280;margin-bottom:8px">Go to the <b>Parameters</b> tab, change a value, and see the effect in the simulation. These are the most impactful ones to experiment with.</p>
+    <table class="ref-table">
+      <tr><th>Parameter</th><th>Current</th><th>Try This</th><th>What You'll See</th></tr>
+      <tr><td><b>P01</b> — Evaluation Window</td><td>${SPR.P01} days</td><td>Change to <b>3</b></td><td>Quality evaluations happen twice as fast. Partners get flagged sooner. More events per day.</td></tr>
+      <tr><td><b>THRESH_SS</b> — Uptime Threshold</td><td>${SPR.THRESH_SS}%</td><td>Lower to <b>80</b></td><td>Suddenly most partners pass. The zone goes green. Fewer enforcement actions. The system becomes lenient.</td></tr>
+      <tr><td><b>THRESH_SS</b> — Uptime Threshold</td><td>${SPR.THRESH_SS}%</td><td>Raise to <b>98</b></td><td>Almost nobody passes. Mass non-compliance. Enforcement overwhelmed. Lots of expired connections.</td></tr>
+      <tr><td><b>E02</b> — Windows to Restrict</td><td>${SPR.E02}</td><td>Change to <b>1</b></td><td>One bad window and the partner is immediately restricted. Aggressive enforcement — watch the dots turn orange fast.</td></tr>
+      <tr><td><b>P46</b> — Max Connections per CSP</td><td>${SPR.P46}</td><td>Lower to <b>20</b></td><td>Partners hit capacity much faster. More requests expire. The zone gets congested. Demand fulfillment drops.</td></tr>
+      <tr><td><b>P56</b> — Concentration Threshold</td><td>${SPR.P56}%</td><td>Lower to <b>30</b></td><td>Concentration alerts fire more easily. System actively diversifies routing away from dominant partners.</td></tr>
+      <tr><td><b>RC01</b> — Base Payout</td><td>₹${SPR.RC01}</td><td>Change to <b>500</b></td><td>Partners earn more per recharge. Watch the wallet balances grow faster in the Impact View.</td></tr>
+    </table>
+  </div>`;
+}
+
+// ============================================================
+// SECTION 26: SCENARIO WALKTHROUGHS (Narrative format — parallel OS actions)
+// ============================================================
+const O='<span class="os',QO=O+' q">Quality OS</span>',EO=O+' e">Enforcement OS</span>',DO=O+' d">D&amp;A OS</span>',CO=O+' c">Compensation OS</span>',FO=O+' f">FPV Track</span>',LO=O+' l">Lifecycle OS</span>',XO=O+' x">Concentration OS</span>',VO=O+' v">Visibility OS</span>',EX=O+' f">Exit OS</span>';
+
+const WALKTHROUGH_SCENARIOS=[
+  {
+    id:'day_in_life',
+    title:'A Day in the System',
+    subtitle:'What actually happens every single day inside the machine — all at once.',
+    scenes:[
+      {title:'The Day Begins',
+       text:`Every morning, the entire system wakes up simultaneously. ${QO} checks whether today is an evaluation day (every \${P01} days). ${DO} starts processing overnight connection requests from customers. ${LO} ages all pending installs, checks expiries, and triggers recharges. ${FO} checks investigation timers for any flagged partners. ${CO} processes any recharges that came in. Nothing waits for anything else — they all run in parallel.`,
+       note:'This is the key concept. The system is not a pipeline where step 1 finishes before step 2 starts. Every OS acts simultaneously.'},
+      {title:'Connections Flow',
+       text:`New customer requests arrive. ${DO} routes them through a 4-stage process: eligibility, quality rank, utilization, assignment. But here\'s the thing — the routing decisions are shaped by what every other OS has already determined. ${QO} has already scored each partner (Partner X is COMPLIANT, Partner Y is AT_RISK). ${EO} may have marked Partner Z as RESTRICTED — ${DO} blocks them automatically. ${XO} notices Partner W has 65% of the zone and diverts new requests away. The routing decision is the <b>output</b> of all other OSs working together.`,
+       note:'D&A doesn\'t decide quality or enforcement. It reads those states and routes accordingly.'},
+      {title:'Evaluation Day Fires',
+       text:`It\'s Day \${P01} — evaluation day. ${QO} evaluates <b>every partner at once</b> across 3 domains: uptime ≥\${THRESH_SS}%, resolution ≤\${THRESH_SR}h, install quality ≥\${THRESH_IQ}%. Partner A fails uptime — their chronic failure counter ticks up. Partner B passes everything — stays COMPLIANT. The moment these scores land, other OSs react: ${EO} checks if Partner A is now NON_COMPLIANT and enters PATTERN_WATCH (silent observation). ${DO} recalculates exposure bands — Partner A drops to INELIGIBLE. ${CO} adjusts bonus tiers — Partner A loses their bonus while Partner B gets a quality premium. One evaluation, four cascading consequences — all within the same day.`,
+       note:'This cascade is the heart of the system. One evaluation triggers 4 other OSs to update simultaneously.'},
+      {title:'FPV Runs Independently',
+       text:`Meanwhile, ${FO} runs on a <b>completely separate track</b>. Partner C gets flagged for disintermediation — wallet frozen, marked FPV_FLAGGED. But ${QO} still scores Partner C as COMPLIANT this window — their service quality is fine. ${EO} holds two separate states: performance track is CLEAR (quality is good), FPV track is FLAGGED (integrity violated). ${DO} reads the FPV flag and stops all routing regardless of quality. This is why there are two enforcement tracks — "you do good work but you also cheat" is a valid simultaneous state.`,
+       note:'Quality ≠ integrity. The system can hold this nuance because the tracks are independent.'},
+      {title:'End of Day',
+       text:`As the day closes, ${CO} calculates payouts: ₹\${RC01} base per recharge plus quality bonuses for compliant partners. ${LO} finalizes connection states — installs completed, requests expired, pauses triggered. ${DO} logs unserved demand as a signal to the ops team. ${QO} domain values drift slightly based on today\'s operational reality. Tomorrow, it all runs again. Every single day is a full cycle of all OSs acting in parallel.`,
+       note:'The system never sleeps. Every day is a complete cycle.'},
+    ],
+    insight:'The Wiom system is not a pipeline. It\'s a mesh of parallel operating systems — Quality evaluates, Enforcement watches, D&A routes, FPV guards, Compensation pays — all running simultaneously, reading each other\'s outputs. No single OS controls the system. They collectively form the intelligence.'
+  },
+  {
+    id:'partner_decline',
+    title:'A Partner Declines',
+    subtitle:'One partner\'s quality drops over weeks. Watch how the system responds — not one OS at a time, but all together.',
+    scenes:[
+      {title:'Week 1 — First Signs',
+       text:`Partner "Sharma Broadband" has power issues. Their uptime drops from 95% to 82%. On evaluation day, ${QO} catches the failure: uptime domain fails (82% < \${THRESH_SS}%). The chronic failure counter ticks from 0 to 1. Composite state moves to AT_RISK. Immediately, ${EO} detects the first AT_RISK result and enters PATTERN_WATCH — but this is invisible to the partner. ${DO} drops Sharma\'s exposure to ELIGIBLE_REDUCED (\${P44}× multiplier), so fewer new customers get routed there. ${CO} lowers their bonus tier — less earning per recharge. ${VO} shows the partner "Needs Improvement" but does <b>not</b> reveal the PATTERN_WATCH state or chronic failure counter. Five OSs reacted to one metric change. Sharma only sees the sanitized version.`,
+       note:'The partner sees "Needs Improvement." Internally, the system is already watching for a pattern.'},
+      {title:'Weeks 2-4 — Chronic Failure',
+       text:`Sharma doesn\'t fix the power issue. Every \${P01} days, the same pattern repeats — but each OS tracks independently. ${QO} ticks the chronic failure counter: 1→2→3→\${P17_SS}. After \${P17_SS} consecutive failures, Sharma becomes NON_COMPLIANT. ${EO} is counting its own window counter, waiting for \${E02} consecutive NC windows before escalating. ${DO} has already moved to INELIGIBLE_QUALITY — zero new customers routed, though existing customers stay. ${XO} watches other zone partners absorb Sharma\'s share, monitoring if anyone gets too dominant. ${CO} records declining earnings — no new recharges flowing in.`,
+       note:'Quality, Enforcement, D&A, and Concentration each have their own clock and their own criteria. They don\'t wait for each other.'},
+      {title:'Week 5+ — Enforcement Escalates',
+       text:`After \${E02} consecutive NC windows, ${EO} escalates from PATTERN_WATCH to RESTRICTED. A formal notice goes out. Now ${VO} changes what the partner sees: "Restricted — improve metrics or further action will follow." ${DO} sets exposure to INELIGIBLE_ENFORCEMENT — even if quality somehow improved tomorrow, the enforcement block would remain independently. ${QO} keeps evaluating every \${P01} days, chronic failure counters still ticking. ${LO} keeps existing connections alive — customers can still recharge and use service.`,
+       note:'Enforcement adds a second layer on top of Quality. They don\'t replace each other — both must clear independently.'},
+      {title:'Final Stage — Pre-Exit',
+       text:`After \${E03} more NC windows while RESTRICTED, ${EO} escalates to PRE_EXIT — the dot pulses on the map. Now a new OS enters the picture: ${EX} activates its full sequence — formal notice, customer migration, asset recovery, financial settlement. ${LO} begins migrating active connections to other zone partners. ${DO} re-routes all of Sharma\'s pending requests and recalculates zone capacity. ${CO} processes the final payout — holds resolved, settlement processed. Exit is not just "kick them out." It\'s an orderly process involving 5 OSs ensuring no customer is harmed and no money is lost.`,
+       note:'The exit process is carefully orchestrated across multiple OSs. It protects customers and settles finances properly.'},
+    ],
+    insight:'A partner decline is not a single escalation path. It\'s a coordinated multi-OS response — Quality tracks the problem, Enforcement manages consequences, D&A protects customers, Compensation adjusts earnings, Visibility controls what the partner sees — all running in parallel with their own timers and thresholds.'
+  },
+  {
+    id:'fraud_parallel',
+    title:'Fraud + Quality — Two Tracks',
+    subtitle:'A partner passes quality checks and gets flagged for fraud on the same day. Two systems, two verdicts.',
+    scenes:[
+      {title:'The Trigger — Dual Events',
+       text:`It\'s evaluation day for "Kumar Networks." Two things happen simultaneously. ${QO} runs its evaluation: Kumar passes all thresholds — uptime 96%, resolution 5h, install quality 91%. Result: COMPLIANT ✓. At the same time, ${FO} receives disintermediation evidence — Kumar is directing customers to a competitor. Result: FPV_FLAGGED ✗. Same partner. Same day. Quality says "great." FPV says "cheating." Both are true at the same time.`,
+       note:'This is the core insight — quality and integrity are independent dimensions. A partner can excel at one and fail at the other.'},
+      {title:'Contradictory Consequences',
+       text:`The rest of the system handles both signals simultaneously. ${DO} reads the FPV flag and stops all routing — quality score becomes irrelevant. ${CO} records that Kumar earned a quality bonus (COMPLIANT) but freezes the wallet due to FPV — the bonus is held, not paid. ${EO} holds two separate states for the same partner: performance track is CLEAR (quality is fine), FPV track is FLAGGED (integrity violated). ${VO} shows Kumar "Good Standing" for quality and "Under Review" for compliance — both displayed simultaneously, both true.`,
+       note:'This is why Enforcement has two tracks. The system holds nuance — "you do good work but you also cheat."'},
+      {title:'Investigation — Independent Timers',
+       text:`${FO} runs on its own clock: \${E04} days to investigate. During this time, ${QO} keeps evaluating every \${P01} days — Kumar remains COMPLIANT. Quality OS doesn\'t know about FPV and doesn\'t need to. ${DO} stays blocked — FPV flag overrides quality-based eligibility. ${LO} keeps existing customers served — no disruption to active connections during investigation. Three parallel responses: protect existing customers, block new routing, investigate.`,
+       note:'Each OS operates on its own timer. FPV takes ${E04} days. Quality evaluates every ${P01} days. Neither waits for the other.'},
+      {title:'Resolution',
+       text:`After \${E04} days, the investigation concludes. If confirmed: ${FO} moves from FPV_FLAGGED to SUSPENDED (auto-suspend). ${DO} marks Kumar as INELIGIBLE and begins customer migration. ${LO} queues active connections for migration to other zone partners. ${CO} puts all held funds under review for final settlement. If the case is CRITICAL, ${EX} takes over — TERMINATED status, permanent. The resolution cascades through all OSs simultaneously — they all react to the state change at once.`,
+       note:'FPV resolution triggers 4+ OSs to act simultaneously, not sequentially.'},
+    ],
+    insight:'The system handles complexity honestly. A partner can be excellent at delivery AND dishonest. Quality OS and FPV Track are independent — they coexist. The rest of the system reads both states and takes the strictest applicable action.'
+  },
+  {
+    id:'recovery_parallel',
+    title:'Recovery — Climbing Back',
+    subtitle:'A non-compliant partner improves. Watch how each OS unlocks at its own pace.',
+    scenes:[
+      {title:'Deep in Trouble',
+       text:`Partner "Patel Services" is in a bad state across every OS. ${QO}: NON_COMPLIANT, uptime at 78%, resolution at 12h, chronic failure counters maxed out. ${EO}: RESTRICTED, window counter active — \${E03} more NC windows until PRE_EXIT. ${DO}: INELIGIBLE_ENFORCEMENT, zero new customers, 0% exposure. ${CO}: no bonus, only earning base ₹\${RC01} on existing customer recharges. Recovery means <b>all</b> these OSs need to unlock — but each has different criteria and different timelines.`,
+       note:'Every OS has Patel in a bad state. The recovery path is different for each one.'},
+      {title:'Metrics Start Improving',
+       text:`Patel buys battery backup (uptime improves) and hires a technician (resolution times drop). On the next evaluation day, ${QO} sees the improvement: uptime passes (92%), resolution passes (6h). Chronic failure counters start resetting. State moves to RECOVERY. ${EO} sees Quality=RECOVERY and stops the escalation counter — but does <b>not</b> auto-clear yet. ${DO} partially restores routing: RECOVERY → ELIGIBLE_REDUCED (\${P44}× multiplier). Some new customers start flowing. ${CO} adjusts the bonus tier upward — higher earnings per recharge starting now. Quality unlocked first. D&A partially restored. Enforcement still watching. Compensation improved. Each OS moves at its own speed.`,
+       note:'Recovery is not a single event — it\'s a gradual multi-OS unlock.'},
+      {title:'Sustained Recovery',
+       text:`Patel needs \${P10_RECOVERY} consecutive improving evaluation windows to reach COMPLIANT. During this time, ${QO} tracks each window: window 1 of \${P10_RECOVERY} improving, window 2 still improving, counter ticking. ${DO} has its own counter — Patel needs \${P42} compliant cycles for FULL exposure, not just REDUCED. ${EO} remains RESTRICTED independently — won\'t clear until Quality reaches COMPLIANT. ${XO} watches the zone rebalance as Patel absorbs some customers back from other partners.`,
+       note:'Three different counters running simultaneously: Quality (${P10_RECOVERY} windows), D&A (${P42} cycles), Enforcement (waiting for COMPLIANT).'},
+      {title:'Full Recovery',
+       text:`After \${P10_RECOVERY} windows, ${QO} promotes Patel to COMPLIANT. Chronic failure counters reset to zero. This cascades: ${EO} auto-clears to CLEAR — performance track clean, all restrictions lifted. ${DO} upgrades exposure to ELIGIBLE_REDUCED, but full ELIGIBLE_FULL still takes \${P42} more compliant cycles. ${CO} restores the full bonus tier — quality premium active again. ${VO} shows the partner "Good Standing" — all warnings removed. But notice: even after COMPLIANT, full routing takes more time. The system trusts gradually. This is by design.`,
+       note:'Even full recovery is gradual. D&A takes ${P42} more cycles after COMPLIANT. The system verifies, then trusts incrementally.'},
+    ],
+    insight:'Recovery is a multi-speed process. Quality unlocks first (RECOVERY), D&A partially restores (REDUCED), Enforcement clears last (needs COMPLIANT). Even after COMPLIANT, full exposure takes ${P42} more cycles. The system doesn\'t forgive instantly — it verifies, then trusts incrementally.'
+  },
+  {
+    id:'zone_stress',
+    title:'Zone Under Stress',
+    subtitle:'A zone loses 40% capacity when two partners go down. The system self-heals without human intervention.',
+    scenes:[
+      {title:'Two Partners Go Down',
+       text:`A zone has 6 partners. On the same day, two are knocked out by different OSs: ${EO} escalates Partner A to RESTRICTED (performance track). ${FO} flags Partner B for fraud — FPV_FLAGGED, wallet frozen, routing stopped. ${DO} now has only 4 partners to absorb all new demand. ${LO} ensures existing customers of A and B are unaffected — their active connections continue working. Two different OSs caused two different partners to lose eligibility. The system didn\'t coordinate this — it happened independently.`,
+       note:'This is realistic. Multiple partners can fail simultaneously from unrelated causes.'},
+      {title:'Remaining Partners Absorb',
+       text:`The same number of customers want broadband, but only 4 partners can serve them. ${DO} routes all new requests to the remaining partners — load per partner increases. ${XO} starts monitoring closely: Partner C is now at 45% of zone connections, approaching the \${P56}% threshold. ${QO} notes the pressure — higher load means resolution times may increase for Partners C through F. ${CO} provides a natural incentive: remaining partners earn more because they get more recharges. The system self-balances through financial incentives and concentration protection.`,
+       note:'The system balances demand through incentives (more earning) and protection (concentration monitoring).'},
+      {title:'Concentration Protection',
+       text:`Partner C crosses \${P56}% zone share. ${XO} fires a Tier 1 alert and starts a sustained-check counter. ${DO} responds immediately — starts diversifying, routing new customers to D, E, and F even if C ranks higher on quality. ${QO} continues evaluating all 6 partners (including restricted Partner A — recovery is always possible). ${LO} records expired requests when no partner has capacity — this is the system\'s honest signal to the ops team that the zone needs more capacity.`,
+       note:'Expired requests are intentional. They\'re the system saying "this zone needs more partners or more capacity."'},
+      {title:'Self-Healing',
+       text:`Over the following weeks, the system corrects itself. ${QO} sees Partner A improving — moves to RECOVERY, starts getting limited routing back. ${FO} concludes Partner B\'s investigation — if cleared, FPV_CLEAR restores routing. ${DO} gradually restores capacity as partners return. Expired requests decrease. ${XO} sees Partner C\'s share drop below the threshold as load redistributes naturally. The alert clears. No human decided to re-route, un-restrict, or rebalance. The OS mesh handled it entirely automatically.`,
+       note:'This is the system\'s resilience. It self-heals — but it also tells you when it can\'t.'},
+    ],
+    insight:'When a zone loses capacity, the system doesn\'t panic. D&A re-routes, Concentration guards against over-reliance, Quality keeps evaluating (recovery is always possible), and Lifecycle ensures existing customers aren\'t disrupted. Expired requests are the honest signal that more capacity is needed.'
+  }
+];
+
+function wtParamReplace(text){
+  return text.replace(/\$\{P01\}/g,SPR.P01).replace(/\$\{THRESH_SS\}/g,SPR.THRESH_SS)
+    .replace(/\$\{THRESH_SR\}/g,SPR.THRESH_SR).replace(/\$\{THRESH_IQ\}/g,SPR.THRESH_IQ)
+    .replace(/\$\{P17_SS\}/g,SPR.P17_SS).replace(/\$\{P17_SR\}/g,SPR.P17_SR)
+    .replace(/\$\{P17_IQ\}/g,SPR.P17_IQ).replace(/\$\{E01\}/g,SPR.E01)
+    .replace(/\$\{E02\}/g,SPR.E02).replace(/\$\{E03\}/g,SPR.E03)
+    .replace(/\$\{E04\}/g,SPR.E04).replace(/\$\{P41\}/g,SPR.P41)
+    .replace(/\$\{P42\}/g,SPR.P42).replace(/\$\{P44\}/g,SPR.P44)
+    .replace(/\$\{P46\}/g,SPR.P46).replace(/\$\{P50\}/g,SPR.P50)
+    .replace(/\$\{P53\}/g,SPR.P53).replace(/\$\{P56\}/g,SPR.P56)
+    .replace(/\$\{P58\}/g,SPR.P58).replace(/\$\{P74\}/g,SPR.P74)
+    .replace(/\$\{P10_RECOVERY\}/g,SPR.P10_RECOVERY)
+    .replace(/\$\{RC01\}/g,SPR.RC01);
+}
+
+function renderRefWalkthroughs(){
+  // Scenario picker buttons
+  if(!S.activeWalkthrough)S.activeWalkthrough='day_in_life';
+  const pickerHtml=`<div class="wt-picker">${WALKTHROUGH_SCENARIOS.map(sc=>
+    `<button class="${sc.id===S.activeWalkthrough?'active':''}" onclick="wtPickScenario('${sc.id}')">${sc.title}</button>`
+  ).join('')}</div>`;
+
+  // Render only the active scenario
+  const sc=WALKTHROUGH_SCENARIOS.find(s=>s.id===S.activeWalkthrough);
+  if(!sc)return pickerHtml;
+  if(!S.walkthroughs[sc.id])S.walkthroughs[sc.id]={step:0};
+  const step=S.walkthroughs[sc.id].step;
+  const scene=sc.scenes[step];
+  const total=sc.scenes.length;
+
+  const sceneHtml=`<div class="wt-scene-header">
+    <span class="wt-scene-num">${step+1}</span>
+    <span class="wt-scene-title">${wtParamReplace(scene.title)}</span>
+  </div>
+  <div class="wt-narrative">${wtParamReplace(scene.text)}</div>
+  ${scene.note?`<div class="wt-note">💡 ${wtParamReplace(scene.note)}</div>`:''}`;
+
+  const insightHtml=step>=total-1?`<div class="wt-key-insight"><b>Key takeaway:</b> ${wtParamReplace(sc.insight)}</div>`:'';
+
+  const controlsHtml=`<div class="wt-controls">
+    <button onclick="wtPrev('${sc.id}')" ${step<=0?'disabled':''}>← Previous</button>
+    <button class="primary" onclick="wtNext('${sc.id}')" ${step>=total-1?'disabled':''}>${step>=total-1?'Done ✓':'Next →'}</button>
+    <span class="wt-step-info">Scene ${step+1} of ${total}</span>
+  </div>`;
+
+  return`${pickerHtml}<div class="wt-card">
+    <h4>${sc.title}</h4>
+    <div class="wt-subtitle">${sc.subtitle}</div>
+    ${sceneHtml}
+    ${insightHtml}
+    ${controlsHtml}
+  </div>`;
+}
+
+function wtPickScenario(id){
+  S.activeWalkthrough=id;
+  if(!S.walkthroughs[id])S.walkthroughs[id]={step:0};
+  renderReferenceView();
+}
+
+function wtNext(id){
+  const sc=WALKTHROUGH_SCENARIOS.find(s=>s.id===id);
+  if(!sc)return;
+  if(!S.walkthroughs[id])S.walkthroughs[id]={step:0};
+  if(S.walkthroughs[id].step<sc.scenes.length-1){
+    S.walkthroughs[id].step++;
+  }
+  renderReferenceView();
+}
+
+function wtPrev(id){
+  if(!S.walkthroughs[id])return;
+  if(S.walkthroughs[id].step>0){
+    S.walkthroughs[id].step--;
+  }
+  renderReferenceView();
+}
+
+// ============================================================
+// SECTION 27: INITIALIZATION
+// ============================================================
+function init(){
+  S.partners=generatePartners();
+  S.connections=generateInitialConnections(S.partners);
+
+  // Default to Lucknow (10 partners) for first run — manageable scale
+  S.focusZone='Z04';
+
+  // Render injection bar
+  renderInjectionBar();
+
+  // Default selected partner to one in focus zone
+  const focusPartners=S.partners.filter(p=>p.zoneId===S.focusZone);
+  S.selectedPartnerId=focusPartners.length>0?focusPartners[0].id:S.partners[0].id;
+  S.selectedZoneId=S.focusZone||ZONES[0].id;
+
+  render();
+  console.log('Wiom Simulation initialized:',S.partners.length,'partners,',S.connections.length,'connections');
+}
+
+// Start
+init();
+</script>
+</body>
+</html>
