@@ -174,6 +174,98 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#f8f9f
   color:#94a3b8;font-size:12px;font-style:italic;
 }
 
+/* ACTION ITEMS VIEW */
+#actions-view{overflow-y:auto;padding:32px;max-width:1200px;margin:0 auto;width:100%}
+#actions-view h2{font-size:22px;font-weight:800;margin-bottom:6px;color:#1a1a2e}
+#actions-view .subtitle{color:#6b7280;font-size:13px;margin-bottom:20px;line-height:1.6}
+.actions-toolbar{
+  display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap;
+}
+.actions-toolbar select,.actions-toolbar input{
+  padding:8px 14px;border:1px solid #d1d5db;border-radius:8px;
+  font-size:13px;font-family:inherit;background:#fff;color:#1a1a2e;
+}
+.actions-toolbar select:focus,.actions-toolbar input:focus{outline:none;border-color:#d92b90}
+.actions-toolbar .refresh-btn{
+  padding:8px 16px;background:#d92b90;color:#fff;border:none;border-radius:8px;
+  font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;
+}
+.actions-toolbar .refresh-btn:hover{background:#be2078}
+.actions-stats{
+  display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap;
+}
+.stat-chip{
+  padding:8px 16px;border-radius:8px;font-size:12px;font-weight:700;
+  border:1px solid #e2e8f0;background:#fff;
+}
+.stat-chip.total{border-color:#d92b90;color:#d92b90}
+.stat-chip.pending{border-color:#94a3b8;color:#64748b}
+.stat-chip.progress{border-color:#eab308;color:#a16207}
+.stat-chip.done{border-color:#22c55e;color:#15803d}
+.stat-chip.blocked{border-color:#ef4444;color:#dc2626}
+
+/* Goals section */
+.goals-section{margin-bottom:28px}
+.goals-section h3{font-size:15px;font-weight:700;margin-bottom:12px;color:#9333ea;display:flex;align-items:center;gap:8px}
+.goals-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+.goal-card{
+  background:#fff;border:1px solid #e2e8f0;border-radius:10px;
+  padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.04);
+}
+.goal-card .goal-title{font-size:13px;font-weight:700;color:#1a1a2e;margin-bottom:6px}
+.goal-card .goal-meta{font-size:11px;color:#6b7280;line-height:1.6}
+.goal-card .goal-status{
+  display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;
+  margin-top:6px;
+}
+
+/* Action items table */
+.actions-table-wrap{overflow-x:auto;flex-shrink:0}
+.actions-table{
+  width:100%;border-collapse:collapse;font-size:13px;
+  background:#fff;border-radius:12px;overflow:hidden;
+  box-shadow:0 1px 3px rgba(0,0,0,.04);border:1px solid #e2e8f0;
+}
+.actions-table th{
+  background:#f8f9fa;padding:12px 16px;text-align:left;
+  font-weight:700;color:#475569;font-size:11px;text-transform:uppercase;
+  letter-spacing:.5px;border-bottom:2px solid #e2e8f0;
+  position:sticky;top:0;
+}
+.actions-table td{
+  padding:10px 16px;border-bottom:1px solid #f1f5f9;
+  color:#374151;vertical-align:top;
+}
+.actions-table tr:hover td{background:#fdf2f8}
+.actions-table .badge{
+  display:inline-block;padding:2px 8px;border-radius:4px;
+  font-size:11px;font-weight:600;white-space:nowrap;
+}
+.badge-high{background:#fee2e2;color:#dc2626}
+.badge-medium{background:#fef3c7;color:#a16207}
+.badge-low{background:#e0f2fe;color:#0369a1}
+.badge-not-started{background:#f1f5f9;color:#64748b}
+.badge-in-progress{background:#fef3c7;color:#a16207}
+.badge-done{background:#d1fae5;color:#15803d}
+.badge-blocked{background:#fee2e2;color:#dc2626}
+.actions-empty{
+  text-align:center;padding:48px 24px;color:#94a3b8;font-size:14px;
+}
+.actions-loading{
+  text-align:center;padding:48px 24px;color:#d92b90;font-size:14px;
+}
+.file-upload-area{
+  display:flex;align-items:center;gap:12px;
+  padding:16px 20px;background:#fff;border:2px dashed #d1d5db;
+  border-radius:12px;margin-bottom:20px;cursor:pointer;
+  transition:all .15s;
+}
+.file-upload-area:hover{border-color:#d92b90;background:#fdf2f8}
+.file-upload-area .upload-text{font-size:13px;color:#6b7280}
+.file-upload-area .upload-text b{color:#d92b90}
+.file-upload-area input[type=file]{display:none}
+.last-loaded{font-size:11px;color:#94a3b8;margin-left:auto}
+
 /* RESPONSIVE */
 @media(max-width:768px){
   #march31-bar{flex-wrap:wrap;padding:12px 16px;gap:12px}
@@ -194,6 +286,7 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#f8f9f
     <button onclick="switchTab('ask')">Ask & Amend</button>
     <button onclick="switchTab('teams')">Teams</button>
     <button onclick="switchTab('march')">March 31</button>
+    <button onclick="switchTab('actions')">Action Items</button>
   </div>
   <div class="meta">System Design Reboot</div>
 </div>
@@ -355,6 +448,58 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#f8f9f
     </div>
   </div>
 
+  <!-- TAB 5: ACTION ITEMS -->
+  <div id="actions-view" class="view">
+    <h2>Action Items</h2>
+    <p class="subtitle">Track what's pending, who owns it, and overall goals. Data loads from <b>action_items.xlsx</b> — edit the Excel and hit Refresh.</p>
+
+    <div class="file-upload-area" onclick="document.getElementById('excel-file').click()">
+      <span style="font-size:20px">+</span>
+      <div class="upload-text">
+        <b>Load Excel file</b> — or drop action_items.xlsx in the same folder and hit Refresh
+      </div>
+      <span class="last-loaded" id="last-loaded-time"></span>
+      <input type="file" id="excel-file" accept=".xlsx,.xls" onchange="handleFileUpload(event)">
+    </div>
+
+    <div class="actions-toolbar">
+      <select id="filter-assignee" onchange="renderActions()">
+        <option value="">All People</option>
+      </select>
+      <select id="filter-status" onchange="renderActions()">
+        <option value="">All Statuses</option>
+        <option value="Not Started">Not Started</option>
+        <option value="In Progress">In Progress</option>
+        <option value="Done">Done</option>
+        <option value="Blocked">Blocked</option>
+      </select>
+      <select id="filter-priority" onchange="renderActions()">
+        <option value="">All Priorities</option>
+        <option value="High">High</option>
+        <option value="Medium">Medium</option>
+        <option value="Low">Low</option>
+      </select>
+      <select id="filter-category" onchange="renderActions()">
+        <option value="">All Categories</option>
+      </select>
+      <input type="text" id="filter-search" placeholder="Search tasks..." oninput="renderActions()" style="min-width:180px">
+      <button class="refresh-btn" onclick="loadExcelFromServer()">Refresh</button>
+    </div>
+
+    <div class="actions-stats" id="actions-stats"></div>
+
+    <div class="goals-section" id="goals-section" style="display:none">
+      <h3>Overall Goals</h3>
+      <div class="goals-grid" id="goals-grid"></div>
+    </div>
+
+    <div class="actions-table-wrap">
+      <div id="actions-table-container">
+        <div class="actions-empty">No data loaded. Place <b>action_items.xlsx</b> in the same folder and click Refresh, or upload the file directly.</div>
+      </div>
+    </div>
+  </div>
+
   <!-- TAB 4: MARCH 31 -->
   <div id="march-view" class="view">
     <h2>March 31 — What "Live" Looks Like</h2>
@@ -420,17 +565,18 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#f8f9f
 </div>
 </div>
 
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <script>
 // Tab switching
 function switchTab(id){
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.querySelectorAll('#topbar .tabs button').forEach(b=>b.classList.remove('active'));
-  const map={sim:'sim-view',ask:'ask-view',teams:'teams-view',march:'march-view'};
+  const map={sim:'sim-view',ask:'ask-view',teams:'teams-view',march:'march-view',actions:'actions-view'};
   document.getElementById(map[id]).classList.add('active');
-  // Highlight tab button
   const btns=document.querySelectorAll('#topbar .tabs button');
-  const idx={sim:0,ask:1,teams:2,march:3}[id];
+  const idx={sim:0,ask:1,teams:2,march:3,actions:4}[id];
   btns[idx].classList.add('active');
+  if(id==='actions' && !window._actionsLoaded) loadExcelFromServer();
 }
 
 // Countdown to March 31
@@ -443,6 +589,163 @@ function updateCountdown(){
 }
 updateCountdown();
 setInterval(updateCountdown,60000);
+
+// ===== ACTION ITEMS =====
+let actionItems=[];
+let goalItems=[];
+
+function loadExcelFromServer(){
+  const container=document.getElementById('actions-table-container');
+  container.innerHTML='<div class="actions-loading">Loading action_items.xlsx...</div>';
+  fetch('action_items.xlsx')
+    .then(r=>{if(!r.ok)throw new Error('File not found');return r.arrayBuffer()})
+    .then(buf=>processWorkbook(buf))
+    .catch(()=>{
+      container.innerHTML='<div class="actions-empty">Could not load <b>action_items.xlsx</b> from server.<br>Upload the file manually or ensure it is in the same folder as index.html.</div>';
+    });
+}
+
+function handleFileUpload(e){
+  const file=e.target.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=function(ev){processWorkbook(ev.target.result)};
+  reader.readAsArrayBuffer(file);
+}
+
+function processWorkbook(buf){
+  const wb=XLSX.read(buf,{type:'array',cellDates:true});
+
+  // Action Items sheet
+  const ws=wb.Sheets[wb.SheetNames[0]];
+  const raw=XLSX.utils.sheet_to_json(ws,{defval:''});
+  actionItems=raw.map((r,i)=>({
+    id:r.ID||r.id||(i+1),
+    assignee:String(r.Assignee||r.assignee||''),
+    task:String(r.Task||r.task||r['Action Item']||''),
+    priority:String(r.Priority||r.priority||''),
+    status:String(r.Status||r.status||''),
+    due:formatDate(r['Due Date']||r.due_date||r.DueDate||''),
+    category:String(r.Category||r.category||''),
+    os:String(r['Related OS']||r.related_os||r.RelatedOS||''),
+    notes:String(r.Notes||r.notes||'')
+  }));
+
+  // Goals sheet
+  goalItems=[];
+  if(wb.SheetNames.length>1){
+    const gs=wb.Sheets[wb.SheetNames[1]];
+    const graw=XLSX.utils.sheet_to_json(gs,{defval:''});
+    goalItems=graw.map(r=>({
+      goal:String(r.Goal||r.goal||''),
+      owner:String(r.Owner||r.owner||''),
+      target:formatDate(r['Target Date']||r.target_date||''),
+      status:String(r.Status||r.status||''),
+      details:String(r.Details||r.details||'')
+    }));
+  }
+
+  window._actionsLoaded=true;
+  document.getElementById('last-loaded-time').textContent='Loaded: '+new Date().toLocaleTimeString();
+  populateFilters();
+  renderActions();
+}
+
+function formatDate(v){
+  if(!v)return '';
+  if(v instanceof Date) return v.toISOString().split('T')[0];
+  return String(v).split('T')[0];
+}
+
+function populateFilters(){
+  const assignees=[...new Set(actionItems.map(a=>a.assignee).filter(Boolean))].sort();
+  const cats=[...new Set(actionItems.map(a=>a.category).filter(Boolean))].sort();
+  const asel=document.getElementById('filter-assignee');
+  const csel=document.getElementById('filter-category');
+  asel.innerHTML='<option value="">All People</option>'+assignees.map(a=>'<option value="'+a+'">'+a+'</option>').join('');
+  csel.innerHTML='<option value="">All Categories</option>'+cats.map(c=>'<option value="'+c+'">'+c+'</option>').join('');
+}
+
+function renderActions(){
+  const fAssignee=document.getElementById('filter-assignee').value;
+  const fStatus=document.getElementById('filter-status').value;
+  const fPriority=document.getElementById('filter-priority').value;
+  const fCategory=document.getElementById('filter-category').value;
+  const fSearch=document.getElementById('filter-search').value.toLowerCase();
+
+  let filtered=actionItems.filter(a=>{
+    if(fAssignee && a.assignee!==fAssignee) return false;
+    if(fStatus && a.status!==fStatus) return false;
+    if(fPriority && a.priority!==fPriority) return false;
+    if(fCategory && a.category!==fCategory) return false;
+    if(fSearch && !a.task.toLowerCase().includes(fSearch) && !a.notes.toLowerCase().includes(fSearch) && !a.assignee.toLowerCase().includes(fSearch)) return false;
+    return true;
+  });
+
+  // Stats
+  const total=filtered.length;
+  const notStarted=filtered.filter(a=>a.status==='Not Started').length;
+  const inProgress=filtered.filter(a=>a.status==='In Progress').length;
+  const done=filtered.filter(a=>a.status==='Done').length;
+  const blocked=filtered.filter(a=>a.status==='Blocked').length;
+  document.getElementById('actions-stats').innerHTML=
+    '<div class="stat-chip total">'+total+' Total</div>'+
+    '<div class="stat-chip pending">'+notStarted+' Not Started</div>'+
+    '<div class="stat-chip progress">'+inProgress+' In Progress</div>'+
+    '<div class="stat-chip done">'+done+' Done</div>'+
+    (blocked?'<div class="stat-chip blocked">'+blocked+' Blocked</div>':'');
+
+  // Goals
+  const goalsSection=document.getElementById('goals-section');
+  if(goalItems.length>0){
+    goalsSection.style.display='block';
+    const gFiltered=fAssignee?goalItems.filter(g=>g.owner===fAssignee):goalItems;
+    document.getElementById('goals-grid').innerHTML=gFiltered.map(g=>{
+      const sc=g.status==='Done'?'badge-done':g.status==='In Progress'?'badge-in-progress':g.status==='Blocked'?'badge-blocked':'badge-not-started';
+      return '<div class="goal-card">'+
+        '<div class="goal-title">'+esc(g.goal)+'</div>'+
+        '<div class="goal-meta">'+esc(g.owner)+(g.target?' &middot; '+esc(g.target):'')+'</div>'+
+        (g.details?'<div class="goal-meta" style="margin-top:4px">'+esc(g.details)+'</div>':'')+
+        '<span class="goal-status badge '+sc+'">'+esc(g.status)+'</span>'+
+        '</div>';
+    }).join('');
+  } else {
+    goalsSection.style.display='none';
+  }
+
+  // Table
+  const container=document.getElementById('actions-table-container');
+  if(filtered.length===0){
+    container.innerHTML='<div class="actions-empty">No action items match the current filters.</div>';
+    return;
+  }
+  let html='<table class="actions-table"><thead><tr>'+
+    '<th>#</th><th>Assignee</th><th>Task</th><th>Priority</th><th>Status</th><th>Due</th><th>Category</th><th>OS</th><th>Notes</th>'+
+    '</tr></thead><tbody>';
+  filtered.forEach(a=>{
+    const pc=a.priority==='High'?'badge-high':a.priority==='Medium'?'badge-medium':'badge-low';
+    const sc=a.status==='Done'?'badge-done':a.status==='In Progress'?'badge-in-progress':a.status==='Blocked'?'badge-blocked':'badge-not-started';
+    const overdue=a.due && a.status!=='Done' && new Date(a.due)<new Date()?'color:#dc2626;font-weight:700':'';
+    html+='<tr>'+
+      '<td style="color:#94a3b8;font-size:11px">'+a.id+'</td>'+
+      '<td style="font-weight:600">'+esc(a.assignee)+'</td>'+
+      '<td>'+esc(a.task)+'</td>'+
+      '<td><span class="badge '+pc+'">'+esc(a.priority)+'</span></td>'+
+      '<td><span class="badge '+sc+'">'+esc(a.status)+'</span></td>'+
+      '<td style="white-space:nowrap;'+overdue+'">'+esc(a.due)+'</td>'+
+      '<td style="font-size:12px;color:#6b7280">'+esc(a.category)+'</td>'+
+      '<td style="font-size:12px;color:#6b7280">'+esc(a.os)+'</td>'+
+      '<td style="font-size:12px;color:#6b7280;max-width:200px">'+esc(a.notes)+'</td>'+
+      '</tr>';
+  });
+  html+='</tbody></table>';
+  container.innerHTML=html;
+}
+
+function esc(s){
+  if(!s)return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
 </script>
 </body>
 </html>
