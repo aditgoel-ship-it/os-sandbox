@@ -277,9 +277,82 @@ nav button.active{background:#d92b90;color:#fff}
 ::-webkit-scrollbar-track{background:#f8f9fa}
 ::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px}
 ::-webkit-scrollbar-thumb:hover{background:#94a3b8}
+
+/* WELCOME OVERLAY */
+#welcome-overlay{
+  position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;
+  background:#f8f9fa;display:flex;align-items:center;justify-content:center;
+  transition:opacity .4s ease;
+}
+#welcome-overlay.hidden{opacity:0;pointer-events:none}
+.welcome-card{
+  max-width:620px;width:90%;text-align:center;padding:48px 40px;
+}
+.welcome-icon{
+  font-size:48px;margin-bottom:20px;
+  display:inline-block;
+  background:linear-gradient(135deg,#d92b90,#9333ea);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+.welcome-card h1{
+  font-size:28px;font-weight:900;color:#1a1a2e;margin-bottom:16px;
+  letter-spacing:-.5px;
+}
+.welcome-card .welcome-desc{
+  font-size:14px;color:#6b7280;line-height:1.8;margin-bottom:32px;
+}
+.welcome-card .welcome-desc b{color:#1a1a2e}
+.welcome-howto{
+  background:#fff;border:1px solid #e2e8f0;border-radius:12px;
+  padding:24px 28px;text-align:left;margin-bottom:28px;
+  box-shadow:0 1px 3px rgba(0,0,0,.04);
+}
+.welcome-howto h3{font-size:14px;font-weight:700;color:#1a1a2e;margin-bottom:14px}
+.welcome-howto ul{list-style:none}
+.welcome-howto li{
+  padding:6px 0;font-size:13px;color:#374151;line-height:1.6;
+  display:flex;align-items:flex-start;gap:10px;
+}
+.welcome-howto li::before{content:"•";color:#d92b90;font-weight:700;font-size:16px;line-height:1.4}
+.welcome-howto li b{color:#1a1a2e}
+.welcome-note{
+  font-size:12px;color:#94a3b8;margin-bottom:24px;font-style:italic;
+}
+.welcome-enter-btn{
+  display:inline-block;padding:14px 40px;
+  background:linear-gradient(135deg,#d92b90,#be2078);
+  color:#fff;border:none;border-radius:10px;
+  font-size:15px;font-weight:700;cursor:pointer;
+  transition:all .2s;box-shadow:0 4px 12px rgba(217,43,144,.3);
+}
+.welcome-enter-btn:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(217,43,144,.4)}
 </style>
 </head>
 <body>
+
+<!-- WELCOME SPLASH -->
+<div id="welcome-overlay">
+  <div class="welcome-card">
+    <div class="welcome-icon">🎮</div>
+    <h1>Wiom System Simulation</h1>
+    <p class="welcome-desc">
+      This is an interactive simulation of the Wiom OS architecture using <b>155 real Bharat partners</b> and their actual data. It shows how the 20 Operating Systems work together — quality evaluation, enforcement, routing, compensation — all running live.
+    </p>
+    <div class="welcome-howto">
+      <h3>How to use it:</h3>
+      <ul>
+        <li><b>Step</b> — advance 1 day. Watch what happens to partners.</li>
+        <li><b>Play</b> — auto-advance days. Use 1x, 2x, 5x, 20x speed.</li>
+        <li><b>Views</b> — switch between System View, Partner Dashboard, Ops View, etc.</li>
+        <li><b>Inject scenarios</b> — simulate fraud, power outages, demand spikes from System View.</li>
+        <li><b>Parameters</b> — change any threshold and see the system react.</li>
+      </ul>
+    </div>
+    <p class="welcome-note">This is a sandbox — nothing here affects the real system. Experiment freely.</p>
+    <button class="welcome-enter-btn" onclick="dismissWelcome()">Enter Simulation</button>
+  </div>
+</div>
+
 <div id="app">
 <nav id="nav">
   <span class="brand">WIOM SYSTEM SIMULATION</span>
@@ -3108,6 +3181,13 @@ function init(){
 
   render();
   console.log('Wiom Simulation initialized:',S.partners.length,'partners,',S.connections.length,'connections');
+}
+
+// Welcome overlay
+function dismissWelcome(){
+  const o=document.getElementById('welcome-overlay');
+  o.classList.add('hidden');
+  setTimeout(()=>o.remove(),500);
 }
 
 // Start
