@@ -451,15 +451,11 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#f8f9f
   <!-- TAB 5: ACTION ITEMS -->
   <div id="actions-view" class="view">
     <h2>Action Items</h2>
-    <p class="subtitle">Track what's pending, who owns it, and overall goals. Data loads from <b>action_items.xlsx</b> — edit the Excel and hit Refresh.</p>
+    <p class="subtitle">Track what's pending, who owns it, and overall goals. Data syncs live from <b>Google Sheet</b> — edit the sheet and hit Refresh.</p>
 
-    <div class="file-upload-area" onclick="document.getElementById('excel-file').click()">
-      <span style="font-size:20px">+</span>
-      <div class="upload-text">
-        <b>Load Excel file</b> — or drop action_items.xlsx in the same folder and hit Refresh
-      </div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+      <a href="https://docs.google.com/spreadsheets/d/1H-d5s_b9t58OvZoOY4KLZ-pEPHyhUlYA/edit" target="_blank" class="refresh-btn" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px;background:#15803d">Open Google Sheet</a>
       <span class="last-loaded" id="last-loaded-time"></span>
-      <input type="file" id="excel-file" accept=".xlsx,.xls" onchange="handleFileUpload(event)">
     </div>
 
     <div class="actions-toolbar">
@@ -565,7 +561,6 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#f8f9f
 </div>
 </div>
 
-<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <script>
 // Tab switching
 function switchTab(id){
@@ -594,62 +589,78 @@ setInterval(updateCountdown,60000);
 let actionItems=[];
 let goalItems=[];
 
+const SHEET_ID='1H-d5s_b9t58OvZoOY4KLZ-pEPHyhUlYA';
+const SHEET_CSV_BASE='https://docs.google.com/spreadsheets/d/'+SHEET_ID+'/gviz/tq?tqx=out:csv';
+
+function parseCSV(text){
+  const rows=[];let cur=[];let field='';let inQ=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(inQ){
+      if(c==='"'&&text[i+1]==='"'){field+='"';i++}
+      else if(c==='"'){inQ=false}
+      else{field+=c}
+    } else {
+      if(c==='"'){inQ=true}
+      else if(c===','){cur.push(field);field=''}
+      else if(c==='\n'||c==='\r'){
+        if(c==='\r'&&text[i+1]==='\n')i++;
+        cur.push(field);field='';if(cur.length>1||cur[0]!=='')rows.push(cur);cur=[];
+      } else {field+=c}
+    }
+  }
+  cur.push(field);if(cur.length>1||cur[0]!=='')rows.push(cur);
+  return rows;
+}
+
+function csvToObjects(text){
+  const rows=parseCSV(text);
+  if(rows.length<2)return [];
+  const headers=rows[0];
+  return rows.slice(1).map(r=>{
+    const obj={};headers.forEach((h,i)=>obj[h]=r[i]||'');return obj;
+  });
+}
+
 function loadExcelFromServer(){
   const container=document.getElementById('actions-table-container');
-  container.innerHTML='<div class="actions-loading">Loading action_items.xlsx...</div>';
-  fetch('action_items.xlsx')
-    .then(r=>{if(!r.ok)throw new Error('File not found');return r.arrayBuffer()})
-    .then(buf=>processWorkbook(buf))
-    .catch(()=>{
-      container.innerHTML='<div class="actions-empty">Could not load <b>action_items.xlsx</b> from server.<br>Upload the file manually or ensure it is in the same folder as index.html.</div>';
-    });
-}
-
-function handleFileUpload(e){
-  const file=e.target.files[0];
-  if(!file)return;
-  const reader=new FileReader();
-  reader.onload=function(ev){processWorkbook(ev.target.result)};
-  reader.readAsArrayBuffer(file);
-}
-
-function processWorkbook(buf){
-  const wb=XLSX.read(buf,{type:'array',cellDates:true});
-
-  // Action Items sheet
-  const ws=wb.Sheets[wb.SheetNames[0]];
-  const raw=XLSX.utils.sheet_to_json(ws,{defval:''});
-  actionItems=raw.map((r,i)=>({
-    id:r.ID||r.id||(i+1),
-    assignee:String(r.Assignee||r.assignee||''),
-    task:String(r.Task||r.task||r['Action Item']||''),
-    priority:String(r.Priority||r.priority||''),
-    status:String(r.Status||r.status||''),
-    due:formatDate(r['Due Date']||r.due_date||r.DueDate||''),
-    category:String(r.Category||r.category||''),
-    os:String(r['Related OS']||r.related_os||r.RelatedOS||''),
-    notes:String(r.Notes||r.notes||'')
-  }));
-
-  // Goals sheet
-  goalItems=[];
-  if(wb.SheetNames.length>1){
-    const gs=wb.Sheets[wb.SheetNames[1]];
-    const graw=XLSX.utils.sheet_to_json(gs,{defval:''});
-    goalItems=graw.map(r=>({
-      goal:String(r.Goal||r.goal||''),
-      owner:String(r.Owner||r.owner||''),
-      target:formatDate(r['Target Date']||r.target_date||''),
+  container.innerHTML='<div class="actions-loading">Loading from Google Sheet...</div>';
+  Promise.all([
+    fetch(SHEET_CSV_BASE+'&gid=0').then(r=>{if(!r.ok)throw new Error();return r.text()}),
+    fetch(SHEET_CSV_BASE+'&sheet=Goals').then(r=>r.ok?r.text():null).catch(()=>null)
+  ]).then(([actionsCSV,goalsCSV])=>{
+    const raw=csvToObjects(actionsCSV);
+    actionItems=raw.map((r,i)=>({
+      id:r.ID||r.id||(i+1),
+      assignee:String(r.Assignee||r.assignee||''),
+      task:String(r.Task||r.task||r['Action Item']||''),
+      priority:String(r.Priority||r.priority||''),
       status:String(r.Status||r.status||''),
-      details:String(r.Details||r.details||'')
+      due:formatDate(r['Due Date']||r.due_date||r.DueDate||''),
+      category:String(r.Category||r.category||''),
+      os:String(r['Related OS']||r.related_os||r.RelatedOS||''),
+      notes:String(r.Notes||r.notes||'')
     }));
-  }
-
-  window._actionsLoaded=true;
-  document.getElementById('last-loaded-time').textContent='Loaded: '+new Date().toLocaleTimeString();
-  populateFilters();
-  renderActions();
+    goalItems=[];
+    if(goalsCSV){
+      const graw=csvToObjects(goalsCSV);
+      goalItems=graw.map(r=>({
+        goal:String(r.Goal||r.goal||''),
+        owner:String(r.Owner||r.owner||''),
+        target:formatDate(r['Target Date']||r.target_date||''),
+        status:String(r.Status||r.status||''),
+        details:String(r.Details||r.details||'')
+      }));
+    }
+    window._actionsLoaded=true;
+    document.getElementById('last-loaded-time').textContent='Synced: '+new Date().toLocaleTimeString();
+    populateFilters();
+    renderActions();
+  }).catch(()=>{
+    container.innerHTML='<div class="actions-empty">Could not load from Google Sheet.<br>Check that the sheet is shared (anyone with link can view).</div>';
+  });
 }
+
 
 function formatDate(v){
   if(!v)return '';
