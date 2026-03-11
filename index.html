@@ -283,7 +283,7 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#f8f9f
   <div class="brand">WIOM <span>OS SANDBOX</span></div>
   <div class="tabs">
     <button class="active" onclick="switchTab('sim')">System Simulation</button>
-    <button onclick="switchTab('ask')">Ask & Amend</button>
+    <button onclick="switchTab('ask')">Ask the System</button>
     <button onclick="switchTab('teams')">Teams</button>
     <button onclick="switchTab('march')">March 31</button>
     <button onclick="switchTab('actions')">Action Items</button>
@@ -313,8 +313,8 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#f8f9f
 
   <!-- TAB 2: ASK & AMEND -->
   <div id="ask-view" class="view">
-    <h2>Ask the System & Submit Amendments</h2>
-    <p class="subtitle">Before proposing a change, understand the system first. The Wiom OS Guide knows all 20 Operating Systems, every parameter, and how they interact. DM it on Slack.</p>
+    <h2>Ask the System</h2>
+    <p class="subtitle">The Wiom OS Guide knows all 20 Operating Systems, every parameter, and how they interact. DM it on Slack — type <code>flag</code> to escalate anything to SD for review.</p>
 
     <div class="ask-section">
       <h3>🧠 Wiom OS Guide</h3>
@@ -334,22 +334,8 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#f8f9f
     </div>
 
     <div class="ask-section">
-      <h3>📝 Submit an Amendment</h3>
-      <p>If the OS Guide tells you your suggestion requires an OS change — or you believe a parameter, threshold, or rule needs to change — submit it as an amendment on Slack.</p>
-      <p><b>Post in <code>#system-design-reboot</code> using this format:</b></p>
-      <div class="amend-format">
-        <span class="tag">[AMENDMENT]</span><br>
-        <b>What:</b> Change quality evaluation window from 7 days to 10 days<br>
-        <b>Why:</b> 7 days doesn't give new partners enough time to stabilize<br>
-        <b>Which OS:</b> Quality OS (P01 parameter)<br>
-        <b>OS Guide said:</b> "Changing P01 affects enforcement timing — E02/E03 windows are counted in P01 cycles"
-      </div>
-      <p style="margin-top:14px;font-size:12px;color:#94a3b8">Amendments are acknowledged within 24 hours. Acceptance is not guaranteed. All amendments are reviewed by the System Design team (SD).</p>
-    </div>
-
-    <div class="ask-section">
-      <h3>📊 Track Amendments & Action Items</h3>
-      <p>All amendments, action items, and questions are tracked in the master sheet. This is the single source of truth for who owes what, by when.</p>
+      <h3>📊 Track Action Items</h3>
+      <p>All action items and goals are tracked in the master sheet. This is the single source of truth for who owes what, by when.</p>
       <a href="https://docs.google.com/spreadsheets/d/1H-d5s_b9t58OvZoOY4KLZ-pEPHyhUlYA/edit" target="_blank" class="sheet-link">📊 Open Tracker Sheet →</a>
     </div>
   </div>
