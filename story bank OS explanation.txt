@@ -1,0 +1,124 @@
+STORY 1: The Recovering Partner
+A good partner has one bad month. How does the system respond -- and how do they recover?
+The Setup
+Imagine a partner in Agra running 45 active connections. For the last three evaluation cycles (each cycle is 7 days),
+they've been COMPLIANT on all three SLA checks: uptime at 94% (threshold is 90%), service resolution at 6 hours
+(threshold is 8 hours), and installation quality at 88% (threshold is 85%). They're in the ELIGIBLE_FULL exposure band -
+meaning the system routes new customers to them at full priority. Their compensation bonus tier is GOOD. Everything is
+working.
+>> Quality OS evaluates every 7 days across 3 SLA domains. All must pass for COMPLIANT.
+The Problem
+In week 4, the partner hires a new technician who isn't properly trained. Installation quality drops sharply -- the next
+evaluation scores IQ at 72%, well below the 85% threshold. The other two domains are still fine: uptime is 93%,
+resolution is 5 hours. But one domain failing is enough.
+The Quality OS moves the partner to NON_COMPLIANT on the Installation Integrity domain. This single state change
+triggers a cascade across the system.
+>> Quality OS -> NON_COMPLIANT triggers D&A; to set INELIGIBLE_QUALITY. Zero new customers.
+The Cascade
+The Demand & Allocation OS immediately moves the partner's exposure band to INELIGIBLE_QUALITY. No new
+customers will be routed to them -- existing connections are unaffected, but growth stops completely. The Enforcement
+OS receives the NC signal too: this is the first non-compliant window, so the performance track moves to
+PATTERN_WATCH (E01 trigger). This isn't restriction yet -- it's the system saying "I'm watching." The Compensation OS
+adjusts: with enforcement in PATTERN_WATCH and quality NON_COMPLIANT, the bonus tier drops to NONE. The
+partner still earns the base Rs300 per recharge, but no bonus.
+>> Enforcement OS: 1 NC = PATTERN_WATCH. It takes 3 more NC windows to reach RESTRICTED.
+What the Partner Sees
+On their dashboard, the partner sees their quality score has dropped and their status shows a decline. They see fewer
+new customers being assigned. They see their bonus is gone this period. But they don't see the enforcement threshold
+numbers, the exact routing formula, or how many more failures would trigger restriction. The Visibility OS deliberately
+keeps this hidden -- the partner should focus on improving quality, not gaming exact thresholds.
+>> Visibility OS: R1 (partner) sees outcomes, not methodology. Thresholds are SUPPRESSED.
+The Recovery
+The partner retrains their technician. Next week's evaluation: IQ is back to 89%. Quality OS moves them back to
+COMPLIANT. But recovery isn't instant. The D&A; OS moves them to ELIGIBLE_REDUCED -- they get 50% of normal
+routing for the next 2 cycles (the recovery window, P43). This is deliberate: the system needs to see sustained
+improvement, not a one-week spike. After 3 consecutive COMPLIANT cycles (P42), they return to ELIGIBLE_FULL.
+Enforcement clears PATTERN_WATCH once the quality pattern resolves. Bonus tier restores.
+>> D&A; OS: Recovery = 2 cycles at 50% routing, then 3 COMPLIANT cycles for full restoration.
+Key Takeaway
+The system doesn't punish one bad week -- it watches for patterns. A partner who fixes the problem recovers fully, but
+recovery takes time (2-3 evaluation cycles). The system rewards consistency over perfection. If the partner hadn't
+fixed it and hit 3 more NC windows, enforcement would have escalated to RESTRICTED -- meaning not just zero new
+customers, but active review of their entire operation.-- | -- | -
+STORY 2: The Bad Actor
+A partner is caught disintermediating -- directing Wiom customers to a competitor. What happens?
+The Setup
+A partner in Meerut has 48 active connections and looks fine on paper. Uptime is 91%, resolution is within limits,
+installation quality is 86%. Quality OS has them as COMPLIANT. D&A; is routing new customers to them. Compensation
+tier is GOOD. Nothing in the data suggests a problem.
+The Discovery
+A field visit reveals the truth: the partner has been telling customers to switch to a competitor's service. They're using
+Wiom's installation infrastructure but redirecting the customer relationship. This is a First Principle Violation -- it's not poor
+performance, it's adversarial behavior. An FPV investigation is opened. The Enforcement OS activates its Integrity track
+(separate from the Performance track, which continues running independently). Investigation window: 7 days (E04).
+>> Enforcement OS has two parallel tracks. Performance = patience + patterns. Integrity = verified violation = done.
+FPV Confirmed -- The System Responds
+Investigation confirms the disintermediation. This changes everything -- and it happens fast. The Enforcement OS
+immediately moves posture to SUSPENDED. No warning. No watch period. No second chance. The D&A; OS receives
+INELIGIBLE_ENFORCEMENT -- zero routing. Not reduced, zero. The Exit OS triggers a B2 Integrity Termination. Unlike
+a voluntary exit or a B1 performance exit, B2 skips the 14-day notice period entirely. The partner goes directly from S1
+(declared) to S3 (restricted). Risk overlay is set to R2 (Hostile) -- meaning all grace periods are bypassed.
+>> Exit OS: B2 = no notice, no grace. Risk R2 = immediate restriction + reallocation.
+The Reallocation
+With R2 status, the normal 15% batch limit for reallocation is bypassed. All 48 connections are queued for immediate
+rerouting. The D&A; OS runs its 4-stage ranking for each connection: which eligible partner in the zone has the best
+quality, then the lowest load? Other Meerut partners start receiving these customers. The Connection Lifecycle OS
+updates each connection: the customer's state stays ACTIVE -- they don't notice anything. Only the csp_id changes. The
+customer keeps their WiFi; only the serving partner changes.
+>> Connection Lifecycle: state persists through reassignment. CL_CSP_CHANGED emitted per connection.
+Settlement & Offboarding
+Once all connections are rerouted, the partner enters S5 (Offboarding). The Asset Custody OS marks all NetBox devices
+as RETRIEVAL_PENDING. The partner must return them. The Payment OS processes in two tranches: Tranche 1
+settles any earned compensation up to the exit date. Tranche 2 -- the deposit refund -- only happens after ALL devices
+reach a terminal state (RETURNED, DAMAGED, or LOST). If devices are LOST, full recovery is deducted from the
+deposit. S5 cannot close until both conditions are met: custody confirmed AND settlement complete. No timeout forces
+this.
+>> Exit OS S5 gate: BOTH custody confirmation + settlement complete required. No force-close.
+Key Takeaway
+The system treats integrity violations fundamentally differently from performance problems. Performance = the system
+is patient, looks for patterns, gives time to recover. Integrity = one verified violation ends the relationship. There's no
+recovery path from a confirmed FPV. The two tracks run independently -- a partner can be in PATTERN_WATCH on
+performance while simultaneously being investigated on integrity. If integrity confirms, it overrides everything.
+-- | -- | -
+STORY 3: The Zone Crisis
+One partner dominates a zone. Another exits. How does the system prevent a monopoly and keep
+customers served?
+The Setup
+Meerut is classified as ZC-A (urban). Three partners operate here. Partner A has 35 active connections (58% of zone).
+Partner B has 18 (30%). Partner C has 7 (12%). Total: 60 connections. Each partner has a cap of 50 (P46). The
+concentration alert threshold is 60% (P56) -- Partner A is close at 58%, but hasn't triggered it yet. The zone is technically
+REDUNDANT: multiple eligible partners, no single one over 60%.
+>> Capacity OS tracks zone redundancy. REDUNDANT = healthy. CONCENTRATED = one partner >60%.
+Partner B Exits
+Partner B decides to leave -- voluntary exit. Exit OS processes: S0 -> S1 (declared) -> S2 (notice period, 14 days).
+During notice, B continues serving their 18 connections normally. But the system is already planning. Capacity OS
+calculates COVERAGE_STATE_ALTERNATE_AVAILABLE: can the remaining partners absorb B's load? Partner A has
+headroom of 15 (cap 50 minus 35 active). Partner C has headroom of 43 (cap 50 minus 7). Combined headroom: 58. B's
+connections: 18. 58 is well above 30% of 18 (which is ~5). Coverage is available.
+>> Exit OS checks Capacity OS: is there enough alternate coverage? This gates S4 execution.
+Reallocation & The Concentration Spike
+Notice expires. B moves to S3 -> S4 (execution). D&A; begins rerouting B's 18 connections. The routing engine applies
+its 4-stage process: eligibility check, quality rank, utilization rank, tiebreaker. Both A and C are COMPLIANT -- same
+quality tier. So utilization rank decides: C has 12% load ratio (7/50), A has 70% (35/50). C gets priority. Most of B's
+customers go to C. But let's say A picks up 7 and C picks up 11. After reallocation: A has 42 connections (65% of zone),
+C has 18 (35%). Partner A just crossed the 60% concentration threshold.
+>> D&A; OS routes by quality then load -- not by relationship or request. System-led, always.
+The Escalation
+Capacity OS detects: Partner A is now at 65%, above the 60% alert (P56). Zone state flips from REDUNDANT to
+CONCENTRATED. This starts the 3-tier escalation clock from the Zone Replaceability Floor (INV-DAO-16). Tier 1 (after
+3 cycles for ZC-A): ZONE_REDUNDANCY_PRESSURE -- advisory signal. The system notices but doesn't act yet. Tier 2
+(after 6 cycles): ZONE_REDUNDANCY_CRITICAL -- binding. Capacity OS now requires a remediation plan within 2
+cycles. The plan must include: what action, what timeline, what outcome. Tier 3 (after 9 cycles): if unresolved, D&A;
+auto-applies ELIGIBLE_CAPPED to Partner A. No new connections routed to A in this zone. Existing 42 are untouched,
+but growth stops.
+>> Capacity OS: 3-tier escalation. Advisory -> Binding -> Auto-cap. ZC-A escalates fastest (1x multiplier).
+Resolution
+The system's response to concentration is to grow alternatives, not punish the dominant partner. A new Partner D is
+onboarded into the zone. They start at ELIGIBLE_BASELINE (30% exposure, P53) for their first 2 ramp cycles (P45). As
+D takes on connections and A's share naturally decreases below 60%, the zone returns to REDUNDANT. A's
+ELIGIBLE_CAPPED is lifted. The zone is now healthier: three partners instead of two, better distributed.
+Key Takeaway
+No partner owns a territory. The system actively prevents concentration through escalating pressure -- first a warning,
+then a mandate, then automated enforcement. When a partner exits, customers don't suffer: the system reroutes
+based on quality and capacity, not relationships. The zone self-heals. This is what 'no territory entitlement' looks like in
+practice.-- | -- | -

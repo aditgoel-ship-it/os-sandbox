@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OS Game — Live Responses</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Inter',sans-serif;background:#0f0f17;color:#e2e8f0;min-height:100vh;padding:24px 16px;}
+.wrap{max-width:900px;margin:0 auto;}
+h1{font-size:1.5rem;font-weight:900;color:#d92b90;margin-bottom:4px;}
+.sub{color:#64748b;font-size:0.85rem;margin-bottom:24px;}
+.meta{display:flex;gap:16px;margin-bottom:28px;flex-wrap:wrap;}
+.meta-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:16px 20px;min-width:120px;}
+.meta-val{font-size:1.8rem;font-weight:900;color:#fff;}
+.meta-label{font-size:0.65rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-top:2px;}
+.story-header{font-size:0.7rem;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;margin:28px 0 12px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,.06);}
+.s1{color:#10b981;}.s2{color:#ef4444;}.s3{color:#8b5cf6;}
+.q-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.05);border-radius:14px;padding:18px 20px;margin-bottom:14px;}
+.q-label{font-size:0.65rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;}
+.q-text{font-size:0.9rem;font-weight:600;color:#cbd5e1;line-height:1.45;margin-bottom:14px;}
+.bars{display:flex;flex-direction:column;gap:8px;}
+.bar-row{display:flex;align-items:center;gap:10px;}
+.bar-label{width:24px;font-size:0.75rem;font-weight:800;color:#94a3b8;text-align:center;flex-shrink:0;}
+.bar-track{flex:1;height:28px;background:rgba(255,255,255,.04);border-radius:8px;overflow:hidden;position:relative;}
+.bar-fill{height:100%;border-radius:8px;transition:width .4s ease;display:flex;align-items:center;padding:0 10px;min-width:0;}
+.bar-fill.correct{background:rgba(5,150,105,.25);}
+.bar-fill.wrong{background:rgba(255,255,255,.06);}
+.bar-count{font-size:0.7rem;font-weight:700;color:#e2e8f0;white-space:nowrap;}
+.bar-pct{width:44px;font-size:0.7rem;font-weight:700;color:#64748b;text-align:right;flex-shrink:0;}
+.correct-marker{font-size:0.6rem;color:#10b981;font-weight:800;margin-left:4px;}
+.live-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#10b981;margin-right:6px;animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+.no-data{color:#475569;font-size:0.85rem;padding:40px;text-align:center;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>OS Game — Live Responses</h1>
+  <p class="sub"><span class="live-dot"></span>Real-time — updates automatically as people answer</p>
+
+  <div class="meta">
+    <div class="meta-card"><div class="meta-val" id="metaSessions">0</div><div class="meta-label">Sessions</div></div>
+    <div class="meta-card"><div class="meta-val" id="metaResponses">0</div><div class="meta-label">Total Answers</div></div>
+  </div>
+
+  <div id="dashboard"><div class="no-data">Connecting to Firebase...</div></div>
+</div>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+
+<script>
+// ══════════════════════════════════════════════
+// FIREBASE CONFIG — Same as os_game.html
+// ══════════════════════════════════════════════
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyCnB6GROH97CxVMWOAFnGEF-cRjlPJXOVQ",
+  authDomain: "wiom-os-game.firebaseapp.com",
+  databaseURL: "https://wiom-os-game-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "wiom-os-game",
+  storageBucket: "wiom-os-game.firebasestorage.app",
+  messagingSenderId: "000000000000",
+  appId: "1:000000000000:web:placeholder"
+};
+
+// Question metadata for display
+const QUESTIONS = [
+  { id: 1, story: 1, text: "Installation quality failed (72% vs 85%). What does Quality OS declare?", options: ["A","B","C"], correct: "B" },
+  { id: 2, story: 1, text: "Partner is NON_COMPLIANT. What happens to new customer routing?", options: ["A","B","C"], correct: "B" },
+  { id: 3, story: 1, text: "IQ back to 89%, COMPLIANT again. Full routing back immediately?", options: ["A","B","C"], correct: "B" },
+  { id: 4, story: 1, text: "What if they stayed NON_COMPLIANT for multiple windows?", options: ["A","B","C"], correct: "B" },
+  { id: 5, story: 2, text: "COMPLIANT but caught disintermediating. Which Enforcement track?", options: ["A","B","C"], correct: "B" },
+  { id: 6, story: 2, text: "FPV confirmed. What happens to Enforcement posture?", options: ["A","B","C"], correct: "C" },
+  { id: 7, story: 2, text: "48 connections, R2 hostile. What happens to 15% batch limit?", options: ["A","B","C"], correct: "B" },
+  { id: 8, story: 2, text: "S5 Offboarding. What must happen before deposit refund?", options: ["A","B","C"], correct: "B" },
+  { id: 9, story: 3, text: "B exits. A and C same quality. Who gets priority?", options: ["A","B","C"], correct: "B" },
+  { id: 10, story: 3, text: "A at 65%, above 60% threshold. What happens?", options: ["A","B","C"], correct: "C" },
+  { id: 11, story: 3, text: "Tier 3 escalation. What does ELIGIBLE_CAPPED mean?", options: ["A","B","C"], correct: "B" },
+  { id: 12, story: 3, text: "New Partner D onboarded. What exposure band?", options: ["A","B","C"], correct: "B" },
+];
+
+const STORY_NAMES = { 1: "The Recovering Partner", 2: "The Bad Actor", 3: "The Zone Crisis" };
+const STORY_CLASS = { 1: "s1", 2: "s2", 3: "s3" };
+
+let db = null;
+try {
+  firebase.initializeApp(FIREBASE_CONFIG);
+  db = firebase.database();
+} catch(e) {
+  document.getElementById('dashboard').innerHTML = '<div class="no-data">Firebase not configured. Update FIREBASE_CONFIG in both os_game.html and os_admin.html.</div>';
+}
+
+function renderDashboard(data) {
+  const responses = data.responses || {};
+  const meta = data.meta || {};
+
+  document.getElementById('metaSessions').textContent = (meta.total_sessions || 0).toLocaleString();
+  document.getElementById('metaResponses').textContent = (meta.total_responses || 0).toLocaleString();
+
+  let html = '';
+  let lastStory = 0;
+
+  QUESTIONS.forEach(q => {
+    if (q.story !== lastStory) {
+      lastStory = q.story;
+      html += `<div class="story-header ${STORY_CLASS[q.story]}">Story ${q.story}: ${STORY_NAMES[q.story]}</div>`;
+    }
+
+    const qData = responses['q' + q.id] || {};
+    const total = (qData.A || 0) + (qData.B || 0) + (qData.C || 0);
+
+    html += `<div class="q-card">
+      <div class="q-label">Question ${q.id}</div>
+      <div class="q-text">${q.text}</div>
+      <div class="bars">`;
+
+    q.options.forEach(opt => {
+      const count = qData[opt] || 0;
+      const pct = total > 0 ? Math.round(count / total * 100) : 0;
+      const isCorrect = opt === q.correct;
+      html += `
+        <div class="bar-row">
+          <div class="bar-label">${opt}${isCorrect ? '<span class="correct-marker">\u2713</span>' : ''}</div>
+          <div class="bar-track">
+            <div class="bar-fill ${isCorrect ? 'correct' : 'wrong'}" style="width:${Math.max(pct, 0)}%">
+              ${pct > 8 ? `<span class="bar-count">${count}</span>` : ''}
+            </div>
+            ${pct <= 8 && count > 0 ? `<span class="bar-count" style="position:absolute;left:8px;top:50%;transform:translateY(-50%)">${count}</span>` : ''}
+          </div>
+          <div class="bar-pct">${pct}%</div>
+        </div>`;
+    });
+
+    html += `</div></div>`;
+  });
+
+  document.getElementById('dashboard').innerHTML = html;
+}
+
+// Render immediately with empty data so layout is always visible
+renderDashboard({});
+
+// Listen for real-time updates (overlays live data on top)
+if (db) {
+  db.ref('/').on('value', snap => {
+    renderDashboard(snap.val() || {});
+  });
+}
+</script>
+</body>
+</html>
