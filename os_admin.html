@@ -22,11 +22,10 @@ h1{font-size:1.5rem;font-weight:900;color:#d92b90;margin-bottom:4px;}
 .q-text{font-size:0.9rem;font-weight:600;color:#cbd5e1;line-height:1.45;margin-bottom:14px;}
 .bars{display:flex;flex-direction:column;gap:8px;}
 .bar-row{display:flex;align-items:center;gap:10px;}
-.bar-label{width:24px;font-size:0.75rem;font-weight:800;color:#94a3b8;text-align:center;flex-shrink:0;}
+.bar-label{min-width:120px;max-width:180px;font-size:0.7rem;font-weight:600;color:#94a3b8;flex-shrink:0;line-height:1.3;}
 .bar-track{flex:1;height:28px;background:rgba(255,255,255,.04);border-radius:8px;overflow:hidden;position:relative;}
 .bar-fill{height:100%;border-radius:8px;transition:width .4s ease;display:flex;align-items:center;padding:0 10px;min-width:0;}
-.bar-fill.correct{background:rgba(5,150,105,.25);}
-.bar-fill.wrong{background:rgba(255,255,255,.06);}
+.bar-fill{background:rgba(99,102,241,.3);}
 .bar-count{font-size:0.7rem;font-weight:700;color:#e2e8f0;white-space:nowrap;}
 .bar-pct{width:44px;font-size:0.7rem;font-weight:700;color:#64748b;text-align:right;flex-shrink:0;}
 .correct-marker{font-size:0.6rem;color:#10b981;font-weight:800;margin-left:4px;}
@@ -66,20 +65,32 @@ const FIREBASE_CONFIG = {
   appId: "1:783347180120:web:7c76ea8e86b0de7ef0202d"
 };
 
-// Question metadata for display
+// Question metadata — short labels so admin can follow along without revealing answers
 const QUESTIONS = [
-  { id: 1, story: 1, text: "Installation quality failed (72% vs 85%). What does Quality OS declare?", options: ["A","B","C"], correct: "B" },
-  { id: 2, story: 1, text: "Partner is NON_COMPLIANT. What happens to new customer routing?", options: ["A","B","C"], correct: "B" },
-  { id: 3, story: 1, text: "IQ back to 89%, COMPLIANT again. Full routing back immediately?", options: ["A","B","C"], correct: "B" },
-  { id: 4, story: 1, text: "What if they stayed NON_COMPLIANT for multiple windows?", options: ["A","B","C"], correct: "B" },
-  { id: 5, story: 2, text: "COMPLIANT but caught disintermediating. Which Enforcement track?", options: ["A","B","C"], correct: "B" },
-  { id: 6, story: 2, text: "FPV confirmed. What happens to Enforcement posture?", options: ["A","B","C"], correct: "C" },
-  { id: 7, story: 2, text: "48 connections, R2 hostile. What happens to 15% batch limit?", options: ["A","B","C"], correct: "B" },
-  { id: 8, story: 2, text: "S5 Offboarding. What must happen before deposit refund?", options: ["A","B","C"], correct: "B" },
-  { id: 9, story: 3, text: "B exits. A and C same quality. Who gets priority?", options: ["A","B","C"], correct: "B" },
-  { id: 10, story: 3, text: "A at 65%, above 60% threshold. What happens?", options: ["A","B","C"], correct: "C" },
-  { id: 11, story: 3, text: "Tier 3 escalation. What does ELIGIBLE_CAPPED mean?", options: ["A","B","C"], correct: "B" },
-  { id: 12, story: 3, text: "New Partner D onboarded. What exposure band?", options: ["A","B","C"], correct: "B" },
+  { id: 1, story: 1, text: "Installation quality failed (72% vs 85%). What does Quality OS declare?",
+    opts: {A:"AT_RISK — partial", B:"NON_COMPLIANT — any 1 domain", C:"Still COMPLIANT — 2/3 pass"} },
+  { id: 2, story: 1, text: "Partner is NON_COMPLIANT. What happens to new customer routing?",
+    opts: {A:"Reduced to 50%", B:"Zero — INELIGIBLE_QUALITY", C:"No change yet — watches first"} },
+  { id: 3, story: 1, text: "IQ back to 89%, COMPLIANT again. Full routing back immediately?",
+    opts: {A:"Yes — instant full reset", B:"No — 50% first, then 3 cycles", C:"No — zero for 6 penalty cycles"} },
+  { id: 4, story: 1, text: "What if they stayed NON_COMPLIANT for multiple windows?",
+    opts: {A:"Nothing further", B:"RESTRICTED — bonus paused", C:"Auto-exit after 2 weeks"} },
+  { id: 5, story: 2, text: "COMPLIANT but caught disintermediating. Which Enforcement track?",
+    opts: {A:"Performance track", B:"Integrity track (FPV)", C:"Quality OS handles it"} },
+  { id: 6, story: 2, text: "FPV confirmed. What happens to Enforcement posture?",
+    opts: {A:"PATTERN_WATCH", B:"RESTRICTED", C:"SUSPENDED — no warning"} },
+  { id: 7, story: 2, text: "48 connections, R2 hostile. What happens to 15% batch limit?",
+    opts: {A:"Still applies — ~7-8/cycle", B:"Bypassed — all 48 immediate", C:"Doubled to 30%"} },
+  { id: 8, story: 2, text: "S5 Offboarding. What must happen before deposit refund?",
+    opts: {A:"30-day cooling period", B:"ALL devices terminal + settlement", C:"Just financial settlement"} },
+  { id: 9, story: 3, text: "B exits. A and C same quality. Who gets priority?",
+    opts: {A:"Partner A — more experience", B:"Partner C — lower utilization", C:"Split equally"} },
+  { id: 10, story: 3, text: "A at 65%, above 60% threshold. What happens?",
+    opts: {A:"Immediately capped", B:"Nothing — only on new entry", C:"3-tier escalation clock"} },
+  { id: 11, story: 3, text: "Tier 3 escalation. What does ELIGIBLE_CAPPED mean?",
+    opts: {A:"Connections redistributed", B:"Zero new, existing untouched", C:"Forced zone exit"} },
+  { id: 12, story: 3, text: "New Partner D onboarded. What exposure band?",
+    opts: {A:"ELIGIBLE_FULL — urgent", B:"ELIGIBLE_BASELINE — 30%", C:"ELIGIBLE_REDUCED — 50%"} },
 ];
 
 const STORY_NAMES = { 1: "The Recovering Partner", 2: "The Bad Actor", 3: "The Zone Crisis" };
@@ -117,15 +128,15 @@ function renderDashboard(data) {
       <div class="q-text">${q.text}</div>
       <div class="bars">`;
 
-    q.options.forEach(opt => {
+    ['A','B','C'].forEach(opt => {
       const count = qData[opt] || 0;
       const pct = total > 0 ? Math.round(count / total * 100) : 0;
-      const isCorrect = opt === q.correct;
+      const label = q.opts[opt];
       html += `
         <div class="bar-row">
-          <div class="bar-label">${opt}${isCorrect ? '<span class="correct-marker">\u2713</span>' : ''}</div>
+          <div class="bar-label">${label}</div>
           <div class="bar-track">
-            <div class="bar-fill ${isCorrect ? 'correct' : 'wrong'}" style="width:${Math.max(pct, 0)}%">
+            <div class="bar-fill" style="width:${Math.max(pct, 0)}%">
               ${pct > 8 ? `<span class="bar-count">${count}</span>` : ''}
             </div>
             ${pct <= 8 && count > 0 ? `<span class="bar-count" style="position:absolute;left:8px;top:50%;transform:translateY(-50%)">${count}</span>` : ''}
