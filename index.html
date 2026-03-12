@@ -55,6 +55,7 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#f8f9f
 .view.active{display:flex;flex-direction:column}
 
 /* SIMULATION VIEW */
+#sim-view{align-items:center;justify-content:center;}
 #sim-view iframe{width:100%;height:100%;border:none}
 
 /* ASK & AMEND VIEW */
@@ -308,7 +309,11 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#f8f9f
 
   <!-- TAB 1: SIMULATION -->
   <div id="sim-view" class="view active">
-    <iframe src="wiom_simulation.html" allow="fullscreen"></iframe>
+    <div style="text-align:center;padding:40px;">
+      <div style="font-size:48px;margin-bottom:16px;">🚧</div>
+      <h2 style="font-size:24px;font-weight:900;color:#d92b90;margin-bottom:8px;">Coming Soon</h2>
+      <p style="color:#64748b;font-size:14px;max-width:400px;line-height:1.6;">The System Simulation is being prepared and will be available once all OS specifications are locked.</p>
+    </div>
   </div>
 
   <!-- TAB 2: ASK & AMEND -->
@@ -673,6 +678,15 @@ function renderActions(){
     if(fCategory && a.category!==fCategory) return false;
     if(fSearch && !a.task.toLowerCase().includes(fSearch) && !a.notes.toLowerCase().includes(fSearch) && !a.assignee.toLowerCase().includes(fSearch)) return false;
     return true;
+  });
+
+  // Sort: Done goes to bottom, then by priority (High > Medium > Low)
+  const statusOrder={'Blocked':0,'In Progress':1,'Not Started':2,'Done':3};
+  const prioOrder={'High':0,'Medium':1,'Low':2};
+  filtered.sort((a,b)=>{
+    const sa=(statusOrder[a.status]??2)-(statusOrder[b.status]??2);
+    if(sa!==0) return sa;
+    return (prioOrder[a.priority]??2)-(prioOrder[b.priority]??2);
   });
 
   // Stats
