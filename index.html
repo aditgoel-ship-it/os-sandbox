@@ -406,7 +406,11 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#f8f9f
           <div class="role">Design</div>
           <div class="context">Design system and component library</div>
         </div>
-        <div class="tbd-card">1 FE Engineer — TBD from Marut</div>
+        <div class="member-card">
+          <div class="name">Akshit Verma</div>
+          <div class="role">Front-end Engineer</div>
+          <div class="context">Front-end screens based on System Design docs</div>
+        </div>
       </div>
       <div class="mandate-box">
         <b>This team owns:</b> Front-end screens based on System Design docs. Every screen traces back to an OS specification.
@@ -421,8 +425,36 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#f8f9f
           <div class="role">Engineering Lead</div>
           <div class="context">Owns the backend build — all of it</div>
         </div>
-        <div class="tbd-card">PM — TBD from Dhruv</div>
-        <div class="tbd-card">X Engineers — TBD</div>
+        <div class="member-card">
+          <div class="name">Varun</div>
+          <div class="role">Product</div>
+          <div class="context">Product coordination for engineering</div>
+        </div>
+        <div class="member-card">
+          <div class="name">Rahul</div>
+          <div class="role">Engineer</div>
+          <div class="context">Backend implementation</div>
+        </div>
+        <div class="member-card">
+          <div class="name">Keertika</div>
+          <div class="role">Engineer</div>
+          <div class="context">Backend implementation</div>
+        </div>
+        <div class="member-card">
+          <div class="name">Saurabh Goyal</div>
+          <div class="role">Engineer</div>
+          <div class="context">Backend implementation</div>
+        </div>
+        <div class="member-card">
+          <div class="name">Akshit Verma</div>
+          <div class="role">Engineer</div>
+          <div class="context">Backend implementation</div>
+        </div>
+        <div class="member-card">
+          <div class="name">Sanjay</div>
+          <div class="role">Engineer</div>
+          <div class="context">Backend implementation</div>
+        </div>
       </div>
       <div class="mandate-box">
         <b>This team owns:</b> Backend implementation of all OS logic. Receives specs from System Design, builds services, events, and infrastructure.
@@ -529,7 +561,7 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#f8f9f
         <li>Internal dossier view designed (ops team view)</li>
         <li>Every screen traceable to a System Design document</li>
       </ul>
-      <div style="font-size:11px;color:#94a3b8;margin-top:8px">Owners: Ashish, Vikash, 1 FE (TBD)</div>
+      <div style="font-size:11px;color:#94a3b8;margin-top:8px">Owners: Ashish, Vikash, Akshit Verma</div>
     </div>
 
     <div class="milestone-card">
@@ -540,13 +572,11 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#f8f9f
         <li>Event bus and service boundaries implemented</li>
         <li>GitHub process and branching strategy defined</li>
       </ul>
-      <div style="font-size:11px;color:#94a3b8;margin-top:8px">Owners: Marut, PM (TBD), Engineers (TBD)</div>
+      <div style="font-size:11px;color:#94a3b8;margin-top:8px">Owners: Marut, Varun, Rahul, Keertika, Saurabh Goyal, Akshit Verma, Sanjay</div>
     </div>
 
     <div class="blocker-box">
       <b>Open items:</b><br>
-      * FE engineer for Design Layer — waiting on Marut to assign<br>
-      * PM for Engineering — waiting on Dhruv to assign<br>
       * Dates and milestones — to be finalized Friday
     </div>
   </div>
@@ -702,20 +732,38 @@ function renderActions(){
     '<div class="stat-chip done">'+done+' Done</div>'+
     (blocked?'<div class="stat-chip blocked">'+blocked+' Blocked</div>':'');
 
-  // Goals
+  // Goals — grouped by owner
   const goalsSection=document.getElementById('goals-section');
   if(goalItems.length>0){
     goalsSection.style.display='block';
     const gFiltered=fAssignee?goalItems.filter(g=>g.owner===fAssignee):goalItems;
-    document.getElementById('goals-grid').innerHTML=gFiltered.map(g=>{
-      const sc=g.status==='Done'?'badge-done':g.status==='In Progress'?'badge-in-progress':g.status==='Blocked'?'badge-blocked':'badge-not-started';
-      return '<div class="goal-card">'+
-        '<div class="goal-title">'+esc(g.goal)+'</div>'+
-        '<div class="goal-meta">'+esc(g.owner)+(g.target?' &middot; '+esc(g.target):'')+'</div>'+
-        (g.details?'<div class="goal-meta" style="margin-top:4px">'+esc(g.details)+'</div>':'')+
-        '<span class="goal-status badge '+sc+'">'+esc(g.status)+'</span>'+
-        '</div>';
-    }).join('');
+    // Group by owner in preferred order
+    const ownerOrder=['SD (Satyam)','Dhruv','Marut','Ashish'];
+    const grouped={};
+    gFiltered.forEach(g=>{
+      const o=g.owner||'Unassigned';
+      if(!grouped[o]) grouped[o]=[];
+      grouped[o].push(g);
+    });
+    const sortedOwners=Object.keys(grouped).sort((a,b)=>{
+      const ia=ownerOrder.indexOf(a), ib=ownerOrder.indexOf(b);
+      return (ia===-1?999:ia)-(ib===-1?999:ib);
+    });
+    let goalsHtml='';
+    sortedOwners.forEach(owner=>{
+      goalsHtml+='<div style="margin-bottom:16px"><div style="font-size:13px;font-weight:800;color:#1a1a2e;margin-bottom:8px;padding-bottom:4px;border-bottom:2px solid #d92b90">'+esc(owner)+'</div><div class="goals-grid">';
+      grouped[owner].forEach(g=>{
+        const sc=g.status==='Done'?'badge-done':g.status==='In Progress'?'badge-in-progress':g.status==='Blocked'?'badge-blocked':'badge-not-started';
+        goalsHtml+='<div class="goal-card">'+
+          '<div class="goal-title">'+esc(g.goal)+'</div>'+
+          '<div class="goal-meta">Target: '+esc(g.target)+'</div>'+
+          (g.details?'<div class="goal-meta" style="margin-top:4px">'+esc(g.details)+'</div>':'')+
+          '<span class="goal-status badge '+sc+'">'+esc(g.status)+'</span>'+
+          '</div>';
+      });
+      goalsHtml+='</div></div>';
+    });
+    document.getElementById('goals-grid').innerHTML=goalsHtml;
   } else {
     goalsSection.style.display='none';
   }
